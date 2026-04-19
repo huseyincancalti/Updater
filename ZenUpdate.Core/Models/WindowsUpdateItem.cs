@@ -1,0 +1,30 @@
+using ZenUpdate.Core.Enums;
+
+namespace ZenUpdate.Core.Models;
+
+/// <summary>
+/// Represents a Windows OS update discovered via Windows Update (WUApiLib).
+/// Examples: security patches, cumulative updates, .NET runtime updates.
+/// </summary>
+public sealed class WindowsUpdateItem : UpdateItem
+{
+    /// <summary>
+    /// The KB (Knowledge Base) article ID for this update.
+    /// Example: "KB5035942"
+    /// </summary>
+    public string KbArticleId { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Whether Windows Update classifies this as an important/critical update.
+    /// Important updates should be highlighted in the UI.
+    /// </summary>
+    public bool IsImportant { get; init; }
+
+    /// <summary>
+    /// Initializes a new <see cref="WindowsUpdateItem"/> with the source preset to WindowsUpdate.
+    /// </summary>
+    public WindowsUpdateItem()
+    {
+        Source = UpdateSource.WindowsUpdate;
+    }
+}

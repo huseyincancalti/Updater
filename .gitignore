@@ -1,0 +1,42 @@
+# ZenUpdate .gitignore
+
+# Build output
+bin/
+obj/
+out/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# Rider
+.idea/
+*.DotSettings.user
+
+# Published output
+publish/
+
+# NuGet
+*.nupkg
+packages/
+project.lock.json
+
+# Test results
+TestResults/
+*.trx
+*.coverage
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Runtime data (user-specific, should NOT be committed)
+%APPDATA%/ZenUpdate/
+
+# Log files
+*.log
