@@ -1,3 +1,5 @@
+using ZenUpdate.Core.Models;
+
 namespace ZenUpdate.Core.Interfaces;
 
 /// <summary>
@@ -8,6 +10,11 @@ namespace ZenUpdate.Core.Interfaces;
 public interface IBlacklistRepository
 {
     /// <summary>
+    /// Returns all blacklist entries including their optional reason text.
+    /// </summary>
+    Task<IReadOnlyList<BlacklistEntry>> GetEntriesAsync();
+
+    /// <summary>
     /// Returns all currently blacklisted winget package IDs.
     /// </summary>
     Task<IReadOnlyList<string>> GetBlacklistedIdsAsync();
@@ -16,7 +23,8 @@ public interface IBlacklistRepository
     /// Adds a package ID to the blacklist and saves the file.
     /// </summary>
     /// <param name="packageId">The winget package ID to blacklist. Example: "Microsoft.Teams"</param>
-    Task AddAsync(string packageId);
+    /// <param name="reason">Optional free-form reason shown in the Settings UI.</param>
+    Task AddAsync(string packageId, string? reason = null);
 
     /// <summary>
     /// Removes a package ID from the blacklist and saves the file.

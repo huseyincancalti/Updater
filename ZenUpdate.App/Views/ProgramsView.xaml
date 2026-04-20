@@ -8,18 +8,17 @@
     -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />   <!-- Page title -->
-            <RowDefinition Height="Auto" />   <!-- Toolbar   -->
-            <RowDefinition Height="*"    />   <!-- DataGrid  -->
-            <RowDefinition Height="Auto" />   <!-- Status bar -->
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <!-- ===== Page Title ===== -->
         <TextBlock Grid.Row="0"
                    Text="Programs"
                    Style="{StaticResource PageTitleStyle}" />
 
-        <!-- ===== Toolbar ===== -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
 
             <Button Content="Scan for Updates"
@@ -38,7 +37,6 @@
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Margin="0,0,8,0" />
 
-            <!-- Spinner shown while scanning -->
             <ProgressBar IsIndeterminate="True"
                          Width="120"
                          Height="4"
@@ -47,48 +45,94 @@
 
         </StackPanel>
 
-        <!-- ===== Updates DataGrid ===== -->
-        <DataGrid Grid.Row="2"
+        <Border Grid.Row="2"
+                Margin="0,0,0,12"
+                Padding="12"
+                Background="{DynamicResource MaterialDesignPaper}"
+                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Visibility="{Binding IsUpdateBatchRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <TextBlock Text="{Binding CurrentBatchProgressText}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,4" />
+                <TextBlock Text="{Binding CurrentAppName, StringFormat=Current app: {0}}"
+                           Margin="0,0,0,6" />
+                <ProgressBar IsIndeterminate="True"
+                             Height="6"
+                             Margin="0,0,0,6" />
+                <TextBlock Text="{Binding CurrentInstallDetailText}"
+                           Opacity="0.7"
+                           FontSize="12" />
+            </StackPanel>
+        </Border>
+
+        <DataGrid Grid.Row="3"
+                  x:Name="ProgramsDataGrid"
                   ItemsSource="{Binding Updates}"
                   AutoGenerateColumns="False"
                   CanUserAddRows="False"
                   CanUserDeleteRows="False"
                   IsReadOnly="False"
-                  SelectionMode="Single"
+                  SelectionMode="Extended"
+                  PreviewMouseRightButtonDown="ProgramsDataGrid_OnPreviewMouseRightButtonDown"
                   materialDesign:DataGridAssist.CellPadding="8 6"
                   materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
+            <DataGrid.ContextMenu>
+                <ContextMenu Opened="ProgramsContextMenu_OnOpened">
+                    <MenuItem x:Name="CopyPackageIdMenuItem"
+                              Header="Copy Package ID"
+                              Click="CopyPackageIdMenuItem_OnClick" />
+                    <MenuItem x:Name="CopyAppNameMenuItem"
+                              Header="Copy App Name"
+                              Click="CopyAppNameMenuItem_OnClick" />
+                    <MenuItem x:Name="CopyAppNameAndPackageIdMenuItem"
+                              Header="Copy App Name + Package ID"
+                              Click="CopyAppNameAndPackageIdMenuItem_OnClick" />
+                    <MenuItem x:Name="CopySelectedPackageIdsMenuItem"
+                              Header="Copy Selected Package IDs"
+                              Click="CopySelectedPackageIdsMenuItem_OnClick" />
+                    <Separator />
+                    <MenuItem x:Name="AddToBlacklistMenuItem"
+                              Header="Add to Blacklist"
+                              Click="AddToBlacklistMenuItem_OnClick" />
+                    <MenuItem x:Name="AddSelectedToBlacklistMenuItem"
+                              Header="Add Selected to Blacklist"
+                              Click="AddSelectedToBlacklistMenuItem_OnClick" />
+                </ContextMenu>
+            </DataGrid.ContextMenu>
             <DataGrid.Columns>
 
-                <!-- Selection checkbox -->
                 <DataGridCheckBoxColumn Header=""
                                         Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
                                         Width="40" />
 
-                <!-- Application display name -->
                 <DataGridTextColumn Header="Application"
                                     Binding="{Binding DisplayName}"
                                     Width="*"
                                     IsReadOnly="True" />
 
-                <!-- Publisher from AppUpdateItem -->
+                <DataGridTextColumn Header="Package ID"
+                                    Binding="{Binding WingetPackageId}"
+                                    Width="220"
+                                    IsReadOnly="True" />
+
                 <DataGridTextColumn Header="Publisher"
                                     Binding="{Binding Publisher}"
                                     Width="160"
                                     IsReadOnly="True" />
 
-                <!-- Installed version -->
                 <DataGridTextColumn Header="Current Version"
                                     Binding="{Binding CurrentVersion}"
                                     Width="130"
                                     IsReadOnly="True" />
 
-                <!-- Available (new) version -->
                 <DataGridTextColumn Header="New Version"
                                     Binding="{Binding AvailableVersion}"
                                     Width="130"
                                     IsReadOnly="True" />
 
-                <!-- Lifecycle status -->
                 <DataGridTextColumn Header="Status"
                                     Binding="{Binding Status}"
                                     Width="100"
@@ -97,8 +141,7 @@
             </DataGrid.Columns>
         </DataGrid>
 
-        <!-- ===== Status Bar ===== -->
-        <TextBlock Grid.Row="3"
+        <TextBlock Grid.Row="4"
                    Text="{Binding StatusMessage}"
                    Opacity="0.65"
                    FontSize="12"

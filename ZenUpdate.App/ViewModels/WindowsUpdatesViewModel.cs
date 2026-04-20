@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ZenUpdate.Core.Interfaces;
@@ -9,11 +8,12 @@ namespace ZenUpdate.App.ViewModels;
 
 /// <summary>
 /// ViewModel for the Windows Updates page.
-/// Scans for and installs OS updates via <see cref="IWindowsUpdateService"/>.
-/// Binds to <c>WindowsUpdatesView.xaml</c>.
+/// Keeps the future service dependency in place while the UI shows a friendly placeholder.
 /// </summary>
 public sealed partial class WindowsUpdatesViewModel : ObservableObject
 {
+    private const string NotImplementedMessage = "This module is not implemented yet.";
+
     private readonly IWindowsUpdateService _service;
     private readonly ILoggerService _logger;
 
@@ -24,9 +24,9 @@ public sealed partial class WindowsUpdatesViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
-    /// <summary>Short status message shown below the DataGrid.</summary>
+    /// <summary>Short status message shown below the page content.</summary>
     [ObservableProperty]
-    private string _statusMessage = "Press 'Scan' to check for Windows Updates.";
+    private string _statusMessage = NotImplementedMessage;
 
     /// <summary>
     /// Initializes the WindowsUpdatesViewModel with its required services.
@@ -38,42 +38,15 @@ public sealed partial class WindowsUpdatesViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Scans for available Windows OS updates in the background.
-    /// Note: This can take 30–120 seconds on first run.
+    /// Handles the current placeholder action for the Windows Updates page.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanScan))]
-    private async Task ScanAsync()
+    private void Scan()
     {
-        IsBusy = true;
-        StatusMessage = "Searching for Windows Updates (this may take a minute)...";
+        _ = _service;
         Updates.Clear();
-
-        try
-        {
-            _logger.Info("Windows Update scan started.");
-            var results = await Task.Run(() => _service.GetAvailableUpdatesAsync(CancellationToken.None));
-
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                foreach (var item in results)
-                    Updates.Add(item);
-            });
-
-            StatusMessage = Updates.Count == 0
-                ? "Windows is up to date."
-                : $"{Updates.Count} update(s) available.";
-
-            _logger.Info($"Windows Update scan complete. {Updates.Count} update(s) found.");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = "Scan failed. See the log for details.";
-            _logger.Error("Windows Update scan failed.", ex);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        StatusMessage = NotImplementedMessage;
+        _logger.Info("Windows Updates module is not implemented yet.");
     }
 
     private bool CanScan() => !IsBusy;

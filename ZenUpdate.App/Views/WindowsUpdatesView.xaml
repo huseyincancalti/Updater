@@ -15,29 +15,31 @@
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
             <Button Content="Check for Updates"
                     Command="{Binding ScanCommand}"
+                    IsEnabled="False"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Margin="0,0,8,0" />
             <ProgressBar IsIndeterminate="True"
-                                        Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                                        Width="100"
-                                        VerticalAlignment="Center" />
+                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
+                         Width="100"
+                         VerticalAlignment="Center" />
         </StackPanel>
 
-        <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding Updates}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  IsReadOnly="True"
-                  materialDesign:DataGridAssist.CellPadding="8 4"
-                  materialDesign:DataGridAssist.ColumnHeaderPadding="8 4">
-            <DataGrid.Columns>
-                <DataGridCheckBoxColumn Header="" Binding="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="40" IsReadOnly="False" />
-                <DataGridTextColumn Header="Update Name" Binding="{Binding DisplayName}" Width="*" />
-                <DataGridTextColumn Header="KB Article" Binding="{Binding KbArticleId}" Width="130" />
-                <DataGridTextColumn Header="Available Version" Binding="{Binding AvailableVersion}" Width="160" />
-                <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="110" />
-            </DataGrid.Columns>
-        </DataGrid>
+        <Border Grid.Row="2"
+                Padding="24"
+                CornerRadius="8"
+                BorderThickness="1"
+                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                Background="{DynamicResource MaterialDesignPaper}">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="This module is not implemented yet."
+                           FontSize="18"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,8" />
+                <TextBlock Text="Windows Update support will appear here in a future pass."
+                           Opacity="0.7"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
 
         <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Opacity="0.6" Margin="0,8,0,0" FontSize="12" />
     </Grid>

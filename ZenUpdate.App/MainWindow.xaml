@@ -65,7 +65,7 @@
                     <Separator Margin="8,0" />
 
                     <!-- Navigation buttons -->
-                    <!-- Navigation: Buttons support Command binding; ListBoxItem does not -->                    
+                    <!-- Navigation: Buttons support Command binding; ListBoxItem does not -->
                     <StackPanel>
 
                         <Button x:Name="NavPrograms"
@@ -146,13 +146,30 @@
                            Margin="12,6,0,4" />
 
                 <ListView Grid.Row="1"
+                          x:Name="LogConsoleListView"
                           ItemsSource="{Binding LogConsole.Entries}"
                           Background="Transparent"
                           BorderThickness="0"
                           Margin="8,0,8,8"
                           FontFamily="Consolas"
                           FontSize="12"
+                          SelectionMode="Extended"
+                          PreviewKeyDown="LogConsoleListView_OnPreviewKeyDown"
                           ScrollViewer.VerticalScrollBarVisibility="Auto">
+                    <ListView.ContextMenu>
+                        <ContextMenu Opened="LogConsoleContextMenu_OnOpened">
+                            <MenuItem x:Name="CopySelectedLogMenuItem"
+                                      Header="Copy Selected"
+                                      Click="CopySelectedLogMenuItem_OnClick" />
+                            <MenuItem x:Name="CopyAllLogsMenuItem"
+                                      Header="Copy All"
+                                      Click="CopyAllLogsMenuItem_OnClick" />
+                            <Separator />
+                            <MenuItem x:Name="ClearLogsMenuItem"
+                                      Header="Clear Logs"
+                                      Click="ClearLogsMenuItem_OnClick" />
+                        </ContextMenu>
+                    </ListView.ContextMenu>
                     <ListView.ItemTemplate>
                         <DataTemplate>
                             <TextBlock Text="{Binding}" Foreground="#FFAAAAAA" />

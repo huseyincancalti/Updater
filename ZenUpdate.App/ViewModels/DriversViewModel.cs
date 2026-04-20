@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ZenUpdate.Core.Interfaces;
@@ -9,11 +8,12 @@ namespace ZenUpdate.App.ViewModels;
 
 /// <summary>
 /// ViewModel for the Drivers page.
-/// Scans for and installs hardware driver updates via <see cref="IDriverUpdateService"/>.
-/// Binds to <c>DriversView.xaml</c>.
+/// Keeps the future service dependency in place while the UI shows a friendly placeholder.
 /// </summary>
 public sealed partial class DriversViewModel : ObservableObject
 {
+    private const string NotImplementedMessage = "This module is not implemented yet.";
+
     private readonly IDriverUpdateService _service;
     private readonly ILoggerService _logger;
 
@@ -24,9 +24,9 @@ public sealed partial class DriversViewModel : ObservableObject
     [ObservableProperty]
     private bool _isBusy;
 
-    /// <summary>Short status message shown below the DataGrid.</summary>
+    /// <summary>Short status message shown below the page content.</summary>
     [ObservableProperty]
-    private string _statusMessage = "Press 'Scan' to check for driver updates.";
+    private string _statusMessage = NotImplementedMessage;
 
     /// <summary>
     /// Initializes the DriversViewModel with its required services.
@@ -38,41 +38,15 @@ public sealed partial class DriversViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Scans for available driver updates in the background.
+    /// Handles the current placeholder action for the Drivers page.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanScan))]
-    private async Task ScanAsync()
+    private void Scan()
     {
-        IsBusy = true;
-        StatusMessage = "Searching for driver updates...";
+        _ = _service;
         Updates.Clear();
-
-        try
-        {
-            _logger.Info("Driver scan started.");
-            var results = await Task.Run(() => _service.GetAvailableUpdatesAsync(CancellationToken.None));
-
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                foreach (var item in results)
-                    Updates.Add(item);
-            });
-
-            StatusMessage = Updates.Count == 0
-                ? "All drivers are up to date."
-                : $"{Updates.Count} driver update(s) available.";
-
-            _logger.Info($"Driver scan complete. {Updates.Count} update(s) found.");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = "Scan failed. See the log for details.";
-            _logger.Error("Driver scan failed.", ex);
-        }
-        finally
-        {
-            IsBusy = false;
-        }
+        StatusMessage = NotImplementedMessage;
+        _logger.Info("Drivers module is not implemented yet.");
     }
 
     private bool CanScan() => !IsBusy;

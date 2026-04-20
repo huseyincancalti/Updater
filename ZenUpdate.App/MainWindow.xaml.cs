@@ -1,10 +1,16 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows;
+using System.Windows.Input;
+using ZenUpdate.App.ViewModels;
+using ZenUpdate.Core.Models;
 
 namespace ZenUpdate.App;
 
 /// <summary>
 /// Code-behind for the main application window.
-/// Kept minimal — all logic lives in <see cref="ViewModels.ShellViewModel"/>.
+/// Kept minimal while hosting small view-only behaviors for the log console.
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -12,5 +18,70 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+    }
+
+    private void LogConsoleListView_OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            CopySelectedEntriesToClipboard();
+            e.Handled = true;
+        }
+    }
+
+    private void LogConsoleContextMenu_OnOpened(object sender, RoutedEventArgs e)
+    {
+        var hasSelection = GetSelectedLogEntries().Count > 0;
+        var hasLogs = LogConsoleListView.Items.Count > 0;
+
+        CopySelectedLogMenuItem.IsEnabled = hasSelection;
+        CopyAllLogsMenuItem.IsEnabled = hasLogs;
+        ClearLogsMenuItem.IsEnabled = hasLogs;
+    }
+
+    private void CopySelectedLogMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        CopySelectedEntriesToClipboard();
+    }
+
+    private void CopyAllLogsMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        CopyEntriesToClipboard(LogConsoleListView.Items.OfType<LogEntry>());
+    }
+
+    private void ClearLogsMenuItem_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is ShellViewModel shellViewModel)
+        {
+            shellViewModel.LogConsole.Entries.Clear();
+        }
+    }
+
+    private void CopySelectedEntriesToClipboard()
+    {
+        CopyEntriesToClipboard(GetSelectedLogEntries());
+    }
+
+    private void CopyEntriesToClipboard(IEnumerable<LogEntry> entries)
+    {
+        var lines = entries
+            .Select(entry => entry.ToString())
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .ToList();
+
+        if (lines.Count == 0)
+        {
+            return;
+        }
+
+        Clipboard.SetText(string.Join(Environment.NewLine, lines));
+    }
+
+    private List<LogEntry> GetSelectedLogEntries()
+    {
+        return LogConsoleListView.SelectedItems
+            .OfType<LogEntry>()
+            .OrderBy(entry => LogConsoleListView.Items.IndexOf(entry))
+            .ToList();
     }
 }

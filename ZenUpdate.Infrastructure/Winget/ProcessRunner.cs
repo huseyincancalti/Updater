@@ -8,7 +8,7 @@ namespace ZenUpdate.Infrastructure.Winget;
 /// a <see cref="ProcessExecutionResult"/>. This is the only place in the
 /// entire codebase that calls <see cref="Process.Start()"/>.
 /// </summary>
-public sealed class ProcessRunner
+public class ProcessRunner
 {
     /// <summary>
     /// Runs the given executable with the specified arguments in a hidden window
@@ -19,7 +19,7 @@ public sealed class ProcessRunner
     /// <param name="cancellationToken">If cancelled, the process is killed immediately.</param>
     /// <returns>A <see cref="ProcessExecutionResult"/> with stdout, stderr, and exit code.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the process cannot be started.</exception>
-    public async Task<ProcessExecutionResult> RunAsync(
+    public virtual async Task<ProcessExecutionResult> RunAsync(
         string executable,
         string arguments,
         CancellationToken cancellationToken)
@@ -30,8 +30,8 @@ public sealed class ProcessRunner
             Arguments = arguments,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
-            UseShellExecute = false,      // Required for stream redirection
-            CreateNoWindow = true,         // No console window visible to the user
+            UseShellExecute = false,
+            CreateNoWindow = true,
             StandardOutputEncoding = Encoding.UTF8,
             StandardErrorEncoding = Encoding.UTF8
         };
@@ -39,7 +39,6 @@ public sealed class ProcessRunner
         using var process = new Process { StartInfo = startInfo };
         process.Start();
 
-        // Read stdout and stderr concurrently to prevent output-buffer deadlocks.
         var stdOutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
         var stdErrTask = process.StandardError.ReadToEndAsync(cancellationToken);
 
@@ -49,16 +48,18 @@ public sealed class ProcessRunner
         }
         catch (OperationCanceledException)
         {
-            // Kill the process if the caller cancels.
             try
             {
                 if (!process.HasExited)
+                {
                     process.Kill(entireProcessTree: true);
+                }
             }
             catch
             {
                 // Ignore errors during emergency kill.
             }
+
             throw;
         }
 

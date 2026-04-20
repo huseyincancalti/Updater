@@ -16,7 +16,9 @@ public sealed class JsonSettingsRepository : ISettingsRepository
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true // Makes the file human-readable for manual editing
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true
     };
 
     private readonly ILoggerService _logger;
@@ -32,22 +34,44 @@ public sealed class JsonSettingsRepository : ISettingsRepository
     /// <inheritdoc />
     public async Task<AppSettings> LoadAsync()
     {
-        // TODO: Implement settings loading.
-        // Steps:
-        //   1. If file doesn't exist, return new AppSettings() (defaults)
-        //   2. Deserialize JSON — wrap in try-catch
-        //   3. On deserialization failure, log error and return defaults (never crash on startup)
-        throw new NotImplementedException("JsonSettingsRepository.LoadAsync is not yet implemented.");
+        if (!File.Exists(FilePath))
+        {
+            _logger.Info("Settings file not found. Using default settings.");
+            return new AppSettings();
+        }
+
+        try
+        {
+            var json = await File.ReadAllTextAsync(FilePath);
+            var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
+
+            if (settings is null)
+            {
+                _logger.Warning("Settings file was empty or invalid. Using default settings.");
+                return new AppSettings();
+            }
+
+            _logger.Info("Settings loaded successfully.");
+            return settings;
+        }
+        catch (Exception ex)
+        {
+            _logger.Warning($"Could not load settings. Using defaults. Reason: {ex.Message}");
+            return new AppSettings();
+        }
     }
 
     /// <inheritdoc />
     public async Task SaveAsync(AppSettings settings)
     {
-        // TODO: Implement settings saving.
-        // Steps:
-        //   1. Ensure directory exists
-        //   2. Serialize with WriteIndented = true
-        //   3. Write to file atomically (write to temp file, then rename)
-        throw new NotImplementedException("JsonSettingsRepository.SaveAsync is not yet implemented.");
+        Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+
+        var tempFilePath = FilePath + ".tmp";
+        var json = JsonSerializer.Serialize(settings, JsonOptions);
+
+        await File.WriteAllTextAsync(tempFilePath, json);
+        File.Move(tempFilePath, FilePath, overwrite: true);
+
+        _logger.Info("Settings saved successfully.");
     }
 }

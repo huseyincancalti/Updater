@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="24" MaxWidth="600" HorizontalAlignment="Left">
+        <StackPanel Margin="24" MaxWidth="700" HorizontalAlignment="Left">
 
             <TextBlock Text="Settings" Style="{StaticResource PageTitleStyle}" />
 
@@ -19,7 +19,19 @@
                               Margin="0,0,0,8" />
 
                     <CheckBox Content="Minimize to system tray on close"
-                              IsChecked="{Binding Settings.MinimizeToTray}" />
+                              IsChecked="{Binding Settings.MinimizeToTray}"
+                              Margin="0,0,0,12" />
+
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Save Settings"
+                                Command="{Binding SaveCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}"
+                                Margin="0,0,8,0" />
+
+                        <Button Content="Reload"
+                                Command="{Binding LoadCommand}"
+                                Style="{StaticResource MaterialDesignOutlinedButton}" />
+                    </StackPanel>
                 </StackPanel>
             </materialDesign:Card>
 
@@ -34,25 +46,60 @@
                                FontSize="12"
                                Margin="0,0,0,12" />
 
-                    <!-- Blacklist table placeholder -->
-                    <ListBox ItemsSource="{Binding BlacklistedIds}"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             MinHeight="80">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding}" FontFamily="Consolas" FontSize="13" />
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <!-- TODO: Add text input + Add/Remove buttons -->
-                    <TextBlock Text="Add/Remove blacklist entries — coming soon."
-                               Opacity="0.4"
-                               FontSize="11"
-                               Margin="0,8,0,0" />
+                        <TextBox Grid.Column="0"
+                                 Text="{Binding NewBlacklistPackageId, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Package ID"
+                                 Margin="0,0,8,0" />
+
+                        <TextBox Grid.Column="1"
+                                 Text="{Binding NewBlacklistReason, UpdateSourceTrigger=PropertyChanged}"
+                                 materialDesign:HintAssist.Hint="Reason (optional)"
+                                 Margin="0,0,8,0" />
+
+                        <Button Grid.Column="2"
+                                Content="Add"
+                                Command="{Binding AddBlacklistEntryCommand}"
+                                Style="{StaticResource MaterialDesignRaisedButton}" />
+                    </Grid>
+
+                    <DataGrid ItemsSource="{Binding BlacklistEntries}"
+                              SelectedItem="{Binding SelectedBlacklistEntry}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True"
+                              MinHeight="140"
+                              materialDesign:DataGridAssist.CellPadding="8 6"
+                              materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Package ID"
+                                                Binding="{Binding PackageId}"
+                                                Width="2*" />
+                            <DataGridTextColumn Header="Reason"
+                                                Binding="{Binding Reason}"
+                                                Width="2*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <Button Content="Remove Selected"
+                            Command="{Binding RemoveSelectedBlacklistEntryCommand}"
+                            Style="{StaticResource MaterialDesignOutlinedButton}"
+                            Margin="0,12,0,0"
+                            HorizontalAlignment="Left" />
                 </StackPanel>
             </materialDesign:Card>
+
+            <TextBlock Text="{Binding StatusMessage}"
+                       Opacity="0.65"
+                       FontSize="12"
+                       Margin="0,12,0,0" />
 
         </StackPanel>
     </ScrollViewer>
