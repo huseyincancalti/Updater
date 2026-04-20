@@ -2,6 +2,10 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+    <!--
+        DataContext is set automatically by MainWindow's DataTemplate binding.
+        DataContext type: WindowsUpdatesViewModel
+    -->
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -10,37 +14,83 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="Windows Updates" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Grid.Row="0"
+                   Text="Windows Updates"
+                   Style="{StaticResource PageTitleStyle}" />
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,12">
+
             <Button Content="Check for Updates"
                     Command="{Binding ScanCommand}"
-                    IsEnabled="False"
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Margin="0,0,8,0" />
+
+            <Button Content="Cancel"
+                    Command="{Binding CancelScanCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="0,0,8,0"
+                    Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
             <ProgressBar IsIndeterminate="True"
-                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}"
-                         Width="100"
-                         VerticalAlignment="Center" />
+                         Width="120"
+                         Height="4"
+                         VerticalAlignment="Center"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
         </StackPanel>
 
-        <Border Grid.Row="2"
-                Padding="24"
-                CornerRadius="8"
-                BorderThickness="1"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
-                Background="{DynamicResource MaterialDesignPaper}">
-            <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="This module is not implemented yet."
-                           FontSize="18"
-                           FontWeight="SemiBold"
-                           Margin="0,0,0,8" />
-                <TextBlock Text="Windows Update support will appear here in a future pass."
-                           Opacity="0.7"
-                           TextWrapping="Wrap" />
-            </StackPanel>
-        </Border>
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Updates}"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  IsReadOnly="True"
+                  materialDesign:DataGridAssist.CellPadding="8 6"
+                  materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
+            <DataGrid.Columns>
 
-        <TextBlock Grid.Row="3" Text="{Binding StatusMessage}" Opacity="0.6" Margin="0,8,0,0" FontSize="12" />
+                <!--
+                    Star-width column with tooltip for long titles.
+                    SortMemberPath keeps column-header click sorting working.
+                -->
+                <DataGridTemplateColumn Header="Update"
+                                        Width="*"
+                                        IsReadOnly="True"
+                                        SortMemberPath="DisplayName">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"
+                                       Padding="2,0"
+                                       ToolTip="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+
+                <DataGridTextColumn Header="KB Article"
+                                    Binding="{Binding KbArticleId}"
+                                    Width="100"
+                                    IsReadOnly="True" />
+
+                <DataGridTextColumn Header="Severity"
+                                    Binding="{Binding MsrcSeverity}"
+                                    Width="100"
+                                    IsReadOnly="True" />
+
+                <DataGridTextColumn Header="Status"
+                                    Binding="{Binding Status}"
+                                    Width="90"
+                                    IsReadOnly="True" />
+
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <TextBlock Grid.Row="3"
+                   Text="{Binding StatusMessage}"
+                   Opacity="0.65"
+                   FontSize="12"
+                   Margin="0,8,0,0" />
+
     </Grid>
 </UserControl>

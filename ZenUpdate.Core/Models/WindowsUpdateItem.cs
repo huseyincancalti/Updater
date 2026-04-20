@@ -21,6 +21,12 @@ public sealed class WindowsUpdateItem : UpdateItem
     public bool IsImportant { get; init; }
 
     /// <summary>
+    /// The raw MSRC (Microsoft Security Response Center) severity string from Windows Update.
+    /// Common values: "Critical", "Important", "Moderate", "Low", or empty for unclassified updates.
+    /// </summary>
+    public string MsrcSeverity { get; init; } = string.Empty;
+
+    /// <summary>
     /// Initializes a new <see cref="WindowsUpdateItem"/> with the source preset to WindowsUpdate.
     /// </summary>
     public WindowsUpdateItem()

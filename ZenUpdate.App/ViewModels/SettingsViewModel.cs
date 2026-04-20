@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using ZenUpdate.Core.Interfaces;
@@ -65,9 +66,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     {
         try
         {
+            // Unsubscribe first so we don't auto-save while loading.
+            if (Settings is not null)
+            {
+                Settings.PropertyChanged -= OnSettingsPropertyChanged;
+            }
+
             Settings = await _settingsRepo.LoadAsync();
+            Settings.PropertyChanged += OnSettingsPropertyChanged;
+
             await ReloadBlacklistEntriesAsync();
             StatusMessage = "Settings loaded.";
+            _logger.Info("Settings loaded.");
         }
         catch (Exception ex)
         {
@@ -86,6 +96,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             await _settingsRepo.SaveAsync(Settings);
             StatusMessage = "Settings saved.";
+            _logger.Info("Settings saved by user.");
         }
         catch (Exception ex)
         {
@@ -166,6 +177,18 @@ public sealed partial class SettingsViewModel : ObservableObject
         return SelectedBlacklistEntry is not null;
     }
 
+    /// <summary>
+    /// Automatically saves settings when a checkbox value changes,
+    /// so the user does not have to click "Save Settings" for boolean toggles.
+    /// </summary>
+    private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AppSettings.ScanOnStartup) or nameof(AppSettings.MinimizeToTray))
+        {
+            _ = SaveAsync();
+        }
+    }
+
     private async Task InitializeAsync()
     {
         await LoadAsync();
@@ -180,5 +203,7 @@ public sealed partial class SettingsViewModel : ObservableObject
         {
             BlacklistEntries.Add(entry);
         }
+
+        _logger.Info($"Blacklist loaded: {BlacklistEntries.Count} entry(ies).");
     }
 }

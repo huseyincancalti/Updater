@@ -18,6 +18,22 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Closing += MainWindow_OnClosing;
+    }
+
+    /// <summary>
+    /// If <see cref="AppSettings.MinimizeToTray"/> is enabled, hides the window
+    /// instead of closing it so the app keeps running in the background.
+    /// The user can still exit via Task Manager or a future tray-icon Exit option.
+    /// </summary>
+    private void MainWindow_OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+    {
+        var settingsVm = App.Services.GetService(typeof(SettingsViewModel)) as SettingsViewModel;
+        if (settingsVm?.Settings.MinimizeToTray == true)
+        {
+            e.Cancel = true;
+            Hide();
+        }
     }
 
     private void LogConsoleListView_OnPreviewKeyDown(object sender, KeyEventArgs e)

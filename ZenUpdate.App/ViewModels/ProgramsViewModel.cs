@@ -149,7 +149,8 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
     /// <summary>
     /// Updates all applications where <see cref="AppUpdateItem.IsSelected"/> is true.
-    /// Selected items are processed one by one.
+    /// Selected items are processed one by one. On clean completion an automatic
+    /// refresh scan is triggered after a short delay so stale rows are pruned.
     /// </summary>
     [RelayCommand(CanExecute = nameof(CanInstall))]
     private async Task InstallSelectedAsync()
@@ -177,6 +178,7 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
         var succeededCount = 0;
         var failedCount = 0;
+        var batchCompletedCleanly = false;
 
         try
         {
@@ -212,6 +214,7 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
             StatusMessage = $"Update complete. {succeededCount} succeeded, {failedCount} failed.";
             _logger.Info($"Winget update batch completed. Total: {selectedItems.Count}, Succeeded: {succeededCount}, Failed: {failedCount}.");
+            batchCompletedCleanly = true;
         }
         catch (OperationCanceledException)
         {
@@ -226,6 +229,64 @@ public sealed partial class ProgramsViewModel : ObservableObject
         finally
         {
             CompleteOperation();
+        }
+
+        if (batchCompletedCleanly)
+        {
+            await AutoRefreshAfterBatchAsync();
+        }
+    }
+
+    /// <summary>
+    /// Waits briefly so the user can see Succeeded/Failed row states, then runs
+    /// a fresh scan to remove apps that are no longer upgradeable.
+    /// Called automatically after a clean update batch — never after a cancel.
+    /// </summary>
+    private async Task AutoRefreshAfterBatchAsync()
+    {
+        // Short pause so Succeeded / Failed states are visible before the list changes.
+        await Task.Delay(TimeSpan.FromSeconds(2));
+
+        if (IsBusy)
+        {
+            _logger.Info("Auto-refresh skipped because another operation started during the pause.");
+            return;
+        }
+
+        IsBusy = true;
+        StatusMessage = "Refreshing update list...";
+        _logger.Info("Auto-refresh scan started after update batch.");
+
+        try
+        {
+            var results = await _scanner.GetAvailableUpdatesAsync(CancellationToken.None);
+
+            await Application.Current.Dispatcher.InvokeAsync(() =>
+            {
+                Updates.Clear();
+                foreach (var item in results)
+                {
+                    item.Status = UpdateStatus.Pending;
+                    Updates.Add(item);
+                }
+            });
+
+            StatusMessage = Updates.Count == 0
+                ? "All applications are up to date."
+                : $"{Updates.Count} update(s) available.";
+
+            _logger.Info($"Auto-refresh scan completed. {Updates.Count} update(s) remaining.");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Auto-refresh failed. Press 'Scan for Updates' to retry.";
+            _logger.Error("Auto-refresh scan encountered an unexpected error.", ex);
+        }
+        finally
+        {
+            IsBusy = false;
+            ScanCommand.NotifyCanExecuteChanged();
+            InstallSelectedCommand.NotifyCanExecuteChanged();
         }
     }
 

@@ -1,22 +1,39 @@
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
 namespace ZenUpdate.Core.Models;
 
 /// <summary>
 /// Stores user-configurable application settings.
 /// Serialized to and from <c>%APPDATA%\ZenUpdate\settings.json</c>.
+/// Implements <see cref="INotifyPropertyChanged"/> so the Settings page
+/// can auto-save when a checkbox is toggled.
 /// </summary>
-public sealed class AppSettings
+public sealed class AppSettings : INotifyPropertyChanged
 {
+    private bool _scanOnStartup;
+
     /// <summary>
     /// If true, ZenUpdate checks for updates automatically when the app starts.
     /// Default: false (user must trigger scans manually).
     /// </summary>
-    public bool ScanOnStartup { get; set; } = false;
+    public bool ScanOnStartup
+    {
+        get => _scanOnStartup;
+        set => SetField(ref _scanOnStartup, value);
+    }
+
+    private bool _minimizeToTray;
 
     /// <summary>
     /// If true, ZenUpdate minimizes to the system tray instead of closing when the window is closed.
     /// Default: false.
     /// </summary>
-    public bool MinimizeToTray { get; set; } = false;
+    public bool MinimizeToTray
+    {
+        get => _minimizeToTray;
+        set => SetField(ref _minimizeToTray, value);
+    }
 
     /// <summary>
     /// The folder where log files are written.
@@ -32,4 +49,21 @@ public sealed class AppSettings
     /// Default: 200.
     /// </summary>
     public int MaxLogConsoleEntries { get; set; } = 200;
+
+    /// <inheritdoc />
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+        => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return false;
+        }
+        field = value;
+        OnPropertyChanged(propertyName);
+        return true;
+    }
 }

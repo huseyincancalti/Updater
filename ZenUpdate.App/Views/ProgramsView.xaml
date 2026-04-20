@@ -108,34 +108,48 @@
                                         Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
                                         Width="40" />
 
-                <DataGridTextColumn Header="Application"
-                                    Binding="{Binding DisplayName}"
-                                    Width="*"
-                                    IsReadOnly="True" />
+                <!--
+                    Template column gives us text trimming and a full-name tooltip.
+                    Width="*" expands to fill all remaining space left by the fixed columns.
+                -->
+                <DataGridTemplateColumn Header="Application"
+                                        Width="*"
+                                        IsReadOnly="True"
+                                        SortMemberPath="DisplayName">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayName}"
+                                       TextTrimming="CharacterEllipsis"
+                                       VerticalAlignment="Center"
+                                       Padding="2,0"
+                                       ToolTip="{Binding DisplayName}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
 
                 <DataGridTextColumn Header="Package ID"
                                     Binding="{Binding WingetPackageId}"
-                                    Width="220"
+                                    Width="190"
                                     IsReadOnly="True" />
 
                 <DataGridTextColumn Header="Publisher"
                                     Binding="{Binding Publisher}"
-                                    Width="160"
+                                    Width="140"
                                     IsReadOnly="True" />
 
-                <DataGridTextColumn Header="Current Version"
+                <DataGridTextColumn Header="Current Ver."
                                     Binding="{Binding CurrentVersion}"
-                                    Width="130"
+                                    Width="110"
                                     IsReadOnly="True" />
 
-                <DataGridTextColumn Header="New Version"
+                <DataGridTextColumn Header="New Ver."
                                     Binding="{Binding AvailableVersion}"
-                                    Width="130"
+                                    Width="110"
                                     IsReadOnly="True" />
 
                 <DataGridTextColumn Header="Status"
                                     Binding="{Binding Status}"
-                                    Width="100"
+                                    Width="90"
                                     IsReadOnly="True" />
 
             </DataGrid.Columns>

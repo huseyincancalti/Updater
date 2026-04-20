@@ -27,8 +27,37 @@ public partial class App : Application
         Services = serviceCollection.BuildServiceProvider();
 
         var mainWindow = new MainWindow();
-        mainWindow.DataContext = Services.GetRequiredService<ShellViewModel>();
+        var shellVm = Services.GetRequiredService<ShellViewModel>();
+        mainWindow.DataContext = shellVm;
         mainWindow.Show();
+
+        // Trigger an auto-scan after the window appears if the user enabled it.
+        // We fire-and-forget from the UI thread; ScanAsync is already async-safe.
+        _ = TriggerStartupScanAsync(shellVm);
+    }
+
+    /// <summary>
+    /// Waits for the SettingsViewModel to finish loading from disk,
+    /// then triggers a winget scan if <see cref="AppSettings.ScanOnStartup"/> is true.
+    /// </summary>
+    private static async Task TriggerStartupScanAsync(ShellViewModel shellVm)
+    {
+        // Give the async InitializeAsync in SettingsViewModel time to complete.
+        await Task.Delay(400);
+
+        var settingsVm = Services.GetRequiredService<SettingsViewModel>();
+        if (!settingsVm.Settings.ScanOnStartup)
+        {
+            return;
+        }
+
+        var programsVm = Services.GetRequiredService<ProgramsViewModel>();
+        if (programsVm.ScanCommand.CanExecute(null))
+        {
+            // Navigate to Programs so the user sees the scan in progress.
+            shellVm.NavigateTo(AppPage.Programs);
+            programsVm.ScanCommand.Execute(null);
+        }
     }
 
     /// <summary>
