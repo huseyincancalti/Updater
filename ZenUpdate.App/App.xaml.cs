@@ -1,7 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
+using ZenUpdate.App.Services;
 using ZenUpdate.App.Startup;
 using ZenUpdate.App.ViewModels;
+using ZenUpdate.Core.Interfaces;
 
 namespace ZenUpdate.App;
 
@@ -26,6 +28,10 @@ public partial class App : Application
         serviceCollection.AddZenUpdateServices();
         Services = serviceCollection.BuildServiceProvider();
 
+        // Apply the user's saved theme before any window is shown so we do not
+        // briefly flash the default palette during startup.
+        ApplySavedTheme();
+
         var mainWindow = new MainWindow();
         var shellVm = Services.GetRequiredService<ShellViewModel>();
         mainWindow.DataContext = shellVm;
@@ -34,6 +40,28 @@ public partial class App : Application
         // Trigger an auto-scan after the window appears if the user enabled it.
         // We fire-and-forget from the UI thread; ScanAsync is already async-safe.
         _ = TriggerStartupScanAsync(shellVm);
+    }
+
+    /// <summary>
+    /// Reads the persisted settings once and asks <see cref="IThemeService"/> to apply
+    /// the saved <see cref="Core.Enums.AppTheme"/>. Failures fall back to the default
+    /// dark theme so a corrupt settings file never blocks startup.
+    /// </summary>
+    private static void ApplySavedTheme()
+    {
+        try
+        {
+            var settings = Services.GetRequiredService<ISettingsRepository>()
+                .LoadAsync()
+                .GetAwaiter()
+                .GetResult();
+
+            Services.GetRequiredService<IThemeService>().ApplyTheme(settings.Theme);
+        }
+        catch
+        {
+            // Intentional: theme is cosmetic. Startup must continue even if load fails.
+        }
     }
 
     /// <summary>

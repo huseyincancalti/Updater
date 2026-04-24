@@ -1,0 +1,79 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ZenColors.Light.xaml
+
+        Light palette brushes. Same resource keys as ZenColors.Dark.xaml so the app
+        can swap dictionaries at runtime without touching XAML.
+        Palette values come from the agreed Light palette:
+          Text #334155 · Background #F8FAFC · Soft indigo #E0E7FF
+          Success #10B981 · Error #E11D48 · Warning/Installing #D97706
+    -->
+
+    <!-- ===== Core surfaces ===== -->
+    <SolidColorBrush x:Key="ZenBackgroundBrush"      Color="#F8FAFC" />
+    <SolidColorBrush x:Key="ZenDeepBackgroundBrush"  Color="#E0E7FF" />
+    <SolidColorBrush x:Key="ZenSurfaceBrush"         Color="#FFFFFF" />
+    <SolidColorBrush x:Key="ZenSidebarBrush"         Color="#E0E7FF" />
+    <SolidColorBrush x:Key="ZenSidebarHoverBrush"    Color="#D4DAFE" />
+    <SolidColorBrush x:Key="ZenSidebarSelectedBrush" Color="#4F46E5" />
+    <SolidColorBrush x:Key="ZenDividerBrush"         Color="#CBD5E1" />
+
+    <!-- Soft cool blue / lavender ambient wash (subtle — not a loud wallpaper) -->
+    <LinearGradientBrush x:Key="ZenAmbientBackgroundBrush" StartPoint="0,0" EndPoint="1,1">
+        <GradientStop Color="#F8FAFC" Offset="0" />
+        <GradientStop Color="#F4F6FF" Offset="0.4" />
+        <GradientStop Color="#EEF1FF" Offset="0.75" />
+        <GradientStop Color="#E8EBFA" Offset="1" />
+    </LinearGradientBrush>
+
+    <LinearGradientBrush x:Key="ZenSidebarPanelBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#E4E8FF" Offset="0" />
+        <GradientStop Color="#E0E7FF" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Glass-lite: frosted white over the cool wash -->
+    <SolidColorBrush x:Key="ZenGlassPanelBrush" Color="#D9FFFFFF" />
+    <SolidColorBrush x:Key="ZenGlassBorderBrush" Color="#99CBD5E1" />
+    <SolidColorBrush x:Key="ZenDataGridChromeBackgroundBrush" Color="#66FFFFFF" />
+
+    <LinearGradientBrush x:Key="ZenNavItemSelectedBackgroundBrush" StartPoint="0,0" EndPoint="1,0.5">
+        <GradientStop Color="#4F46E5" Offset="0" />
+        <GradientStop Color="#6366F1" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Log: flatter, less saturated than sidebar (matte console strip) -->
+    <SolidColorBrush x:Key="ZenLogDrawerMatteBrush" Color="#E2E5F0" />
+    <SolidColorBrush x:Key="ZenLogDrawerHeaderHoverBrush" Color="#D5DAE6" />
+
+    <!-- ===== Text ===== -->
+    <SolidColorBrush x:Key="ZenTextBrush"       Color="#334155" />
+    <SolidColorBrush x:Key="ZenMutedTextBrush"  Color="#64748B" />
+
+    <!-- ===== Semantic accents ===== -->
+    <SolidColorBrush x:Key="ZenPrimaryBrush"  Color="#4F46E5" />
+    <SolidColorBrush x:Key="ZenSuccessBrush"  Color="#10B981" />
+    <SolidColorBrush x:Key="ZenErrorBrush"    Color="#E11D48" />
+    <SolidColorBrush x:Key="ZenWarningBrush"  Color="#D97706" />
+
+    <!-- ===== Status badges (used by StatusBadgeCellTemplate in MaterialOverrides.xaml) ===== -->
+    <SolidColorBrush x:Key="ZenBadgePendingBackgroundBrush"     Color="#E2E8F0" />
+    <SolidColorBrush x:Key="ZenBadgePendingForegroundBrush"     Color="#475569" />
+
+    <SolidColorBrush x:Key="ZenBadgeDownloadingBackgroundBrush" Color="#DBEAFE" />
+    <SolidColorBrush x:Key="ZenBadgeDownloadingForegroundBrush" Color="#1D4ED8" />
+
+    <SolidColorBrush x:Key="ZenBadgeInstallingBackgroundBrush"  Color="#FEF3C7" />
+    <SolidColorBrush x:Key="ZenBadgeInstallingForegroundBrush"  Color="#B45309" />
+
+    <SolidColorBrush x:Key="ZenBadgeSucceededBackgroundBrush"   Color="#D1FAE5" />
+    <SolidColorBrush x:Key="ZenBadgeSucceededForegroundBrush"   Color="#047857" />
+
+    <SolidColorBrush x:Key="ZenBadgeFailedBackgroundBrush"      Color="#FEE2E2" />
+    <SolidColorBrush x:Key="ZenBadgeFailedForegroundBrush"      Color="#B91C1C" />
+
+    <SolidColorBrush x:Key="ZenBadgeBlacklistedBackgroundBrush" Color="#E2E8F0" />
+    <SolidColorBrush x:Key="ZenBadgeBlacklistedForegroundBrush" Color="#64748B" />
+
+</ResourceDictionary>

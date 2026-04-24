@@ -1,9 +1,9 @@
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ZenUpdate.App.Collections;
 using ZenUpdate.Core.Enums;
 using ZenUpdate.Core.Interfaces;
 using ZenUpdate.Core.Models;
@@ -24,6 +24,25 @@ public sealed partial class ProgramsViewModel : ObservableObject
     private readonly ILoggerService _logger;
 
     private CancellationTokenSource? _operationCts;
+
+    /// <summary>
+    /// Tracks every <see cref="AppUpdateItem"/> we have subscribed to so we can
+    /// cleanly unsubscribe on a collection Reset (raised by <c>ReplaceAll</c>).
+    /// On a Reset, <c>e.OldItems</c> is null, so without this list we would leak
+    /// old subscriptions and miss new ones — causing the button to stay disabled.
+    /// </summary>
+    private readonly List<AppUpdateItem> _subscribedItems = new();
+
+    /// <summary>
+    /// Local copy of every item returned by the most recent successful winget scan.
+    /// Never cleared by blacklist operations, so when the user un-blacklists an entry
+    /// in Settings, <see cref="RestoreUnblacklistedItemsAsync"/> can re-add matching
+    /// items to <see cref="Updates"/> without requiring a full rescan.
+    /// Reset only when a new scan succeeds.
+    /// </summary>
+    private List<AppUpdateItem> _lastScanResults = new();
+
+    private CancellationTokenSource? _blacklistRestoreDebounceCts;
 
     /// <summary>True while any operation (scan or install) is running. Drives command enable/disable.</summary>
     [ObservableProperty]
@@ -84,9 +103,10 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
     /// <summary>
     /// The list of available application updates displayed in the DataGrid.
-    /// Always populated on the UI thread.
+    /// Always populated on the UI thread. Supports bulk replacement so scan results
+    /// can be swapped in with a single Reset notification rather than N Add events.
     /// </summary>
-    public ObservableCollection<AppUpdateItem> Updates { get; } = new();
+    public BulkObservableCollection<AppUpdateItem> Updates { get; } = new();
 
     /// <summary>
     /// Initializes the ViewModel with its required services.
@@ -104,6 +124,11 @@ public sealed partial class ProgramsViewModel : ObservableObject
         _logger = logger;
 
         Updates.CollectionChanged += OnUpdatesCollectionChanged;
+
+        // When any code removes an entry from the blacklist the repository fires
+        // BlacklistChanged. We listen here so items can be restored instantly without
+        // a manual rescan whenever the user un-blacklists something in Settings.
+        _blacklistRepository.BlacklistChanged += OnBlacklistChangedExternally;
     }
 
     /// <summary>
@@ -132,14 +157,18 @@ public sealed partial class ProgramsViewModel : ObservableObject
         {
             var results = await _scanner.GetAvailableUpdatesAsync(_operationCts!.Token);
 
-            await Application.Current.Dispatcher.InvokeAsync(() =>
+            // Continuation of `await` resumes on the UI thread (WPF sync context),
+            // so we can mutate the observable collection directly here.
+            foreach (var item in results)
             {
-                foreach (var item in results)
-                {
-                    item.Status = UpdateStatus.Pending;
-                    Updates.Add(item);
-                }
-            });
+                item.Status = UpdateStatus.Pending;
+            }
+
+            // Snapshot the raw scan results. This is the source of truth for instant
+            // blacklist-remove restores; it is never modified by blacklist operations.
+            _lastScanResults = results.ToList();
+
+            Updates.ReplaceAll(results);
 
             HasUpdates = Updates.Count > 0;
             HasScanned = true;
@@ -407,23 +436,55 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
     private void OnUpdatesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.OldItems is not null)
+        if (e.Action == NotifyCollectionChangedAction.Reset)
         {
-            foreach (var item in e.OldItems.OfType<AppUpdateItem>())
-            {
-                item.PropertyChanged -= OnUpdateItemPropertyChanged;
-            }
+            // ReplaceAll (and Clear) raise Reset where e.OldItems/e.NewItems are null.
+            // Unsubscribe from everything we tracked, then subscribe to what is now in the list.
+            UnsubscribeAllItems();
+            SubscribeAllItems();
         }
-
-        if (e.NewItems is not null)
+        else
         {
-            foreach (var item in e.NewItems.OfType<AppUpdateItem>())
+            if (e.OldItems is not null)
             {
-                item.PropertyChanged += OnUpdateItemPropertyChanged;
+                foreach (var item in e.OldItems.OfType<AppUpdateItem>())
+                {
+                    item.PropertyChanged -= OnUpdateItemPropertyChanged;
+                    _subscribedItems.Remove(item);
+                }
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (var item in e.NewItems.OfType<AppUpdateItem>())
+                {
+                    item.PropertyChanged += OnUpdateItemPropertyChanged;
+                    _subscribedItems.Add(item);
+                }
             }
         }
 
         InstallSelectedCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Removes <see cref="OnUpdateItemPropertyChanged"/> from every tracked item and clears the tracking list.</summary>
+    private void UnsubscribeAllItems()
+    {
+        foreach (var item in _subscribedItems)
+        {
+            item.PropertyChanged -= OnUpdateItemPropertyChanged;
+        }
+        _subscribedItems.Clear();
+    }
+
+    /// <summary>Subscribes <see cref="OnUpdateItemPropertyChanged"/> to every item currently in <see cref="Updates"/> and records them.</summary>
+    private void SubscribeAllItems()
+    {
+        foreach (var item in Updates)
+        {
+            item.PropertyChanged += OnUpdateItemPropertyChanged;
+            _subscribedItems.Add(item);
+        }
     }
 
     private void OnUpdateItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -434,17 +495,125 @@ public sealed partial class ProgramsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Called when the blacklist repository signals a change from any source.
+    /// Dispatches to the UI thread so the collection update is safe.
+    /// </summary>
+    private void OnBlacklistChangedExternally()
+    {
+        _blacklistRestoreDebounceCts?.Cancel();
+        _blacklistRestoreDebounceCts = new CancellationTokenSource();
+        var debounceToken = _blacklistRestoreDebounceCts.Token;
+
+        // The event may fire from any thread; InvokeAsync queues work on the dispatcher.
+        // A tiny debounce lets multi-add/multi-remove repository writes settle before
+        // we diff the cache, avoiding restore flicker during Programs-page blacklist adds.
+        Application.Current.Dispatcher.InvokeAsync(async () =>
+        {
+            try
+            {
+                await Task.Delay(100, debounceToken);
+                await RestoreUnblacklistedItemsAsync();
+            }
+            catch (OperationCanceledException)
+            {
+                // A newer blacklist change arrived; that later handler will do the restore.
+            }
+        });
+    }
+
+    /// <summary>
+    /// Compares the current blacklist against <see cref="_lastScanResults"/> and adds
+    /// any items that are no longer blacklisted back to the visible <see cref="Updates"/>
+    /// list. Items that were already successfully installed (Status == Succeeded) are
+    /// skipped; items already visible are skipped to prevent duplicates.
+    ///
+    /// This is a local-only operation — no winget process is launched.
+    /// </summary>
+    private async Task RestoreUnblacklistedItemsAsync()
+    {
+        // Nothing to restore if we have no cached scan or if an operation is running.
+        if (_lastScanResults.Count == 0 || IsBusy)
+        {
+            return;
+        }
+
+        var blacklistedIds = await _blacklistRepository.GetBlacklistedIdsAsync();
+        var blacklistSet = blacklistedIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Package IDs already in the visible list — don't add duplicates.
+        var visibleIds = Updates
+            .Select(u => u.WingetPackageId)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Items from the last scan that are now unblacklisted and not yet visible.
+        // Skip items that were already installed (Status == Succeeded was set during install).
+        var toRestore = _lastScanResults
+            .Where(item =>
+                !blacklistSet.Contains(item.WingetPackageId) &&
+                !visibleIds.Contains(item.WingetPackageId) &&
+                item.Status != UpdateStatus.Succeeded)
+            .ToList();
+
+        if (toRestore.Count == 0)
+        {
+            return;
+        }
+
+        // Reset each restored item's status back to Pending so it shows the badge correctly.
+        foreach (var item in toRestore)
+        {
+            item.Status = UpdateStatus.Pending;
+        }
+
+        // Build the new visible list: restored items first so the user notices them,
+        // then the surviving current items. Filter current visible items against the
+        // blacklist too, in case something was blacklisted concurrently (edge case).
+        var currentVisibleItems = Updates
+            .Where(u => !blacklistSet.Contains(u.WingetPackageId))
+            .ToList();
+
+        var newList = toRestore
+            .Concat(currentVisibleItems)
+            .ToList();
+
+        Updates.ReplaceAll(newList);
+
+        HasUpdates = Updates.Count > 0;
+        HasScanned = true;
+        NotifyVisibilityPropertiesChanged();
+        InstallSelectedCommand.NotifyCanExecuteChanged();
+
+        StatusMessage = $"Restored {toRestore.Count} item(s) from blacklist.";
+
+        _logger.Info($"Programs restored {toRestore.Count} item(s) from scan cache after blacklist change.");
+    }
+
+    /// <summary>
+    /// Removes every item whose <see cref="AppUpdateItem.WingetPackageId"/> is in
+    /// <paramref name="packageIds"/> from the visible list without performing a full scan.
+    ///
+    /// We use <see cref="BulkObservableCollection{T}.ReplaceAll"/> (a single Reset event)
+    /// rather than N individual <c>Remove</c> calls.  After the scan populates the DataGrid
+    /// via <c>ReplaceAll</c>, the DataGrid's internal row-to-index map is rebuilt once.
+    /// Subsequent individual <c>Remove</c> events carry an item index; if that index is
+    /// stale (a known WPF DataGrid + <c>VirtualizationMode=Recycling</c> edge case), the
+    /// visual row is not removed even though the backing collection was modified.  A Reset
+    /// event always forces the DataGrid to re-query the collection from scratch, so the
+    /// visual state is guaranteed to be consistent.
+    /// </summary>
     private void RemoveVisibleItemsByPackageId(IEnumerable<string> packageIds)
     {
         var idSet = packageIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var itemsToRemove = Updates
-            .Where(item => idSet.Contains(item.WingetPackageId))
+
+        // Keep only items that are NOT in the blacklisted set.
+        var remaining = Updates
+            .Where(item => !idSet.Contains(item.WingetPackageId))
             .ToList();
 
-        foreach (var item in itemsToRemove)
-        {
-            Updates.Remove(item);
-        }
+        // Single Reset event — DataGrid rebuilds visual rows from scratch, which is
+        // always reliable regardless of prior virtualization state.
+        Updates.ReplaceAll(remaining);
 
         HasUpdates = Updates.Count > 0;
         NotifyVisibilityPropertiesChanged();

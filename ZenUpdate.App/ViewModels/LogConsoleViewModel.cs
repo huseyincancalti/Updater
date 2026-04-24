@@ -1,8 +1,10 @@
-using System.Collections.ObjectModel;
-using System.Collections.Specialized;
+using System;
+using System.Collections.Concurrent;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ZenUpdate.App.Collections;
 using ZenUpdate.Core.Enums;
 using ZenUpdate.Core.Interfaces;
 using ZenUpdate.Core.Models;
@@ -12,19 +14,26 @@ namespace ZenUpdate.App.ViewModels;
 /// <summary>
 /// ViewModel for the log console drawer displayed at the bottom of the main window.
 /// Subscribes to <see cref="ILoggerService.LogEntryAdded"/> and appends entries
-/// to a collection bound to the UI.
+/// to a UI-bound collection.
+///
+/// File logging happens immediately inside the logger service; the UI side buffers
+/// incoming entries and flushes them on a short <see cref="DispatcherTimer"/> tick so
+/// bursts of log messages never thrash the UI thread.
 /// </summary>
 public sealed partial class LogConsoleViewModel : ObservableObject
 {
     private const int MaxEntries = 200;
+    private static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(150);
 
     private readonly ILoggerService _logger;
+    private readonly ConcurrentQueue<LogEntry> _pendingEntries = new();
+    private readonly DispatcherTimer _flushTimer;
 
     /// <summary>
     /// The collection of recent log entries displayed in the UI log panel.
     /// Bound to the ListView in the log drawer.
     /// </summary>
-    public ObservableCollection<LogEntry> Entries { get; } = new();
+    public BulkObservableCollection<LogEntry> Entries { get; } = new();
 
     /// <summary>
     /// Whether the log drawer is currently expanded. Remembered for the current app session.
@@ -44,18 +53,23 @@ public sealed partial class LogConsoleViewModel : ObservableObject
     public bool HasErrors => ErrorCount > 0;
 
     /// <summary>
-    /// Initializes the LogConsoleViewModel and subscribes to logger events.
+    /// Initializes the LogConsoleViewModel, subscribes to logger events, and starts
+    /// the batched UI flush timer.
     /// </summary>
     public LogConsoleViewModel(ILoggerService logger)
     {
         _logger = logger;
 
-        // Subscribe to the logger's event.
-        // IMPORTANT: This callback may be raised from a background thread.
-        // We must dispatch to the UI thread before touching the ObservableCollection.
+        // Subscribe to the logger's event. Callback may come from a background thread;
+        // we enqueue only and let the timer flush on the UI thread.
         _logger.LogEntryAdded += OnLogEntryAdded;
 
-        Entries.CollectionChanged += OnEntriesCollectionChanged;
+        _flushTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = FlushInterval
+        };
+        _flushTimer.Tick += OnFlushTick;
+        _flushTimer.Start();
     }
 
     /// <summary>Toggles the drawer open/closed state.</summary>
@@ -70,6 +84,7 @@ public sealed partial class LogConsoleViewModel : ObservableObject
     private void ClearEntries()
     {
         Entries.Clear();
+        ErrorCount = 0;
     }
 
     partial void OnErrorCountChanged(int value)
@@ -78,41 +93,62 @@ public sealed partial class LogConsoleViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Handles a new log entry from the logger service.
-    /// Dispatches the UI update to the main thread.
+    /// Queues the entry for the next UI flush. Runs on whichever thread the logger used.
     /// </summary>
     private void OnLogEntryAdded(LogEntry entry)
     {
-        Application.Current.Dispatcher.InvokeAsync(() =>
-        {
-            Entries.Insert(0, entry); // Newest entries appear at the top.
-
-            // Keep the collection from growing indefinitely.
-            while (Entries.Count > MaxEntries)
-                Entries.RemoveAt(Entries.Count - 1);
-
-            // Auto-open the drawer when an error appears, so the user sees it immediately.
-            if (entry.Severity == LogSeverity.Error)
-            {
-                IsOpen = true;
-            }
-        });
+        _pendingEntries.Enqueue(entry);
     }
 
     /// <summary>
-    /// Keeps <see cref="ErrorCount"/> in sync with the current entries list.
+    /// Drains the pending queue and merges new entries into the visible list.
+    /// Always runs on the UI thread because DispatcherTimer raises Tick there.
     /// </summary>
-    private void OnEntriesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void OnFlushTick(object? sender, EventArgs e)
     {
-        var errors = 0;
-        foreach (var entry in Entries)
+        if (_pendingEntries.IsEmpty)
         {
+            return;
+        }
+
+        var sawError = false;
+        var newErrors = 0;
+
+        // Drain the queue, preserving arrival order.
+        while (_pendingEntries.TryDequeue(out var entry))
+        {
+            // Insert at 0 so newest is at the top. For typical burst sizes this is fine;
+            // virtualizing ListView keeps the visual work cheap.
+            Entries.Insert(0, entry);
+
             if (entry.Severity == LogSeverity.Error)
             {
-                errors++;
+                newErrors++;
+                sawError = true;
             }
         }
 
-        ErrorCount = errors;
+        // Trim to the max size in one pass, adjusting error count for trimmed errors too.
+        var removedErrors = 0;
+        while (Entries.Count > MaxEntries)
+        {
+            var last = Entries[Entries.Count - 1];
+            if (last.Severity == LogSeverity.Error)
+            {
+                removedErrors++;
+            }
+            Entries.RemoveAt(Entries.Count - 1);
+        }
+
+        if (newErrors != 0 || removedErrors != 0)
+        {
+            ErrorCount = Math.Max(0, ErrorCount + newErrors - removedErrors);
+        }
+
+        // Auto-open the drawer on new errors so the user notices them immediately.
+        if (sawError)
+        {
+            IsOpen = true;
+        }
     }
 }

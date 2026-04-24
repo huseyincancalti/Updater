@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using ZenUpdate.App.Services;
 using ZenUpdate.Core.Interfaces;
 using ZenUpdate.Infrastructure.Logging;
 using ZenUpdate.Infrastructure.Storage;
@@ -26,6 +27,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILoggerService, FileLoggerService>();
         services.AddSingleton<IBlacklistRepository, JsonBlacklistRepository>();
         services.AddSingleton<ISettingsRepository, JsonSettingsRepository>();
+        services.AddSingleton<IThemeService, ThemeService>();
 
         // --- Transient (Infrastructure) ---
         // These are stateless helpers — a new instance is fine for each use.

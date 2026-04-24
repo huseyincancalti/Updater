@@ -10,6 +10,12 @@ namespace ZenUpdate.Core.Interfaces;
 public interface IBlacklistRepository
 {
     /// <summary>
+    /// Raised after any successful write to the blacklist (add or remove).
+    /// May fire from a background thread; UI subscribers must marshal to the UI thread.
+    /// </summary>
+    event Action? BlacklistChanged;
+
+    /// <summary>
     /// Returns all blacklist entries including their optional reason text.
     /// </summary>
     Task<IReadOnlyList<BlacklistEntry>> GetEntriesAsync();

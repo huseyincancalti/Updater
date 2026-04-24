@@ -8,9 +8,28 @@
         Height="720" Width="1100"
         MinHeight="600" MinWidth="800"
         WindowStyle="SingleBorderWindow"
-        Background="{StaticResource AppBackgroundBrush}"
+        Background="{DynamicResource ZenAmbientBackgroundBrush}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontFamily="{DynamicResource MaterialDesignFont}">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" 
+                      CornerRadius="0" 
+                      GlassFrameThickness="0" 
+                      ResizeBorderThickness="6" 
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Window.Style>
+        <Style TargetType="Window">
+            <Style.Triggers>
+                <!-- Add slight padding when maximized so the custom chrome isn't clipped -->
+                <Trigger Property="WindowState" Value="Maximized">
+                    <Setter Property="Padding" Value="8" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Style>
 
     <!--
         DataContext is set in App.xaml.cs to ShellViewModel.
@@ -19,11 +38,55 @@
 
     <!-- DataTemplates: map page ViewModels to their Views -->
     <Window.Resources>
-        <SolidColorBrush x:Key="SidebarNavHoverBrush" Color="#233657" />
-        <SolidColorBrush x:Key="SidebarNavSelectedBrush" Color="#2C4B78" />
-        <SolidColorBrush x:Key="LogDrawerBackgroundBrush" Color="#FF0D0D1A" />
-        <SolidColorBrush x:Key="LogDrawerHeaderHoverBrush" Color="#FF161626" />
-        <SolidColorBrush x:Key="ErrorBadgeBrush" Color="#FFD64545" />
+        <!--
+            Custom Window Control Buttons (Minimize, Maximize, Close)
+        -->
+        <Style x:Key="WindowControlButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Width" Value="46" />
+            <Setter Property="Height" Value="40" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource ZenSidebarHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="WindowCloseButtonStyle" TargetType="Button" BasedOn="{StaticResource WindowControlButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#E81123" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!--
+            Shell-local styles only. All colours come from the active Zen theme
+            (DynamicResource ZenSidebarBrush, ZenSidebarHoverBrush, ...) so the
+            sidebar and log drawer repaint as soon as the theme is switched.
+        -->
 
         <Style x:Key="SidebarNavButtonStyle"
                TargetType="Button"
@@ -35,6 +98,7 @@
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="8" />
             <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
             <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesignBody}" />
             <Setter Property="TextElement.FontSize" Value="13" />
@@ -42,10 +106,10 @@
             <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource SidebarNavHoverBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource ZenSidebarHoverBrush}" />
                 </Trigger>
                 <Trigger Property="IsPressed" Value="True">
-                    <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                    <Setter Property="Background" Value="{DynamicResource ZenNavItemSelectedBackgroundBrush}" />
                     <Setter Property="Foreground" Value="White" />
                     <Setter Property="TextElement.Foreground" Value="White" />
                 </Trigger>
@@ -77,7 +141,7 @@
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="HeaderBorder"
                                         Property="Background"
-                                        Value="{StaticResource LogDrawerHeaderHoverBrush}" />
+                                        Value="{DynamicResource ZenLogDrawerHeaderHoverBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -101,14 +165,44 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <!-- Title bar -->
+            <RowDefinition Height="40" />
             <!-- Main content area -->
             <RowDefinition Height="*" />
             <!-- Log drawer: Auto so the row only takes as much space as the drawer needs. -->
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
+        <!-- ===== Custom Title Bar ===== -->
+        <Grid Grid.Row="0" Background="{DynamicResource ZenDeepBackgroundBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: Icon & Title -->
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                <materialDesign:PackIcon Kind="Update" Width="18" Height="18" Foreground="{DynamicResource ZenPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                <TextBlock Text="ZenUpdate" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource ZenTextBrush}" VerticalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Right: Window Controls -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button Style="{StaticResource WindowControlButtonStyle}" Click="MinimizeButton_Click" ToolTip="Minimize">
+                    <materialDesign:PackIcon Kind="WindowMinimize" Width="14" Height="14" />
+                </Button>
+                <Button Style="{StaticResource WindowControlButtonStyle}" Click="MaximizeButton_Click" ToolTip="Maximize">
+                    <materialDesign:PackIcon Kind="WindowMaximize" Width="14" Height="14" />
+                </Button>
+                <Button Style="{StaticResource WindowCloseButtonStyle}" Click="CloseButton_Click" ToolTip="Close">
+                    <materialDesign:PackIcon Kind="WindowClose" Width="14" Height="14" />
+                </Button>
+            </StackPanel>
+        </Grid>
+
         <!-- ===== Main Area: Sidebar + Content ===== -->
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="224" />
                 <ColumnDefinition Width="*" />
@@ -116,7 +210,7 @@
 
             <!-- ===== Left Sidebar Navigation ===== -->
             <Border Grid.Column="0"
-                    Background="{StaticResource SidebarBackgroundBrush}"
+                    Background="{DynamicResource ZenSidebarPanelBrush}"
                     BorderThickness="0,0,1,0"
                     BorderBrush="{DynamicResource MaterialDesignDivider}">
                 <StackPanel>
@@ -125,7 +219,7 @@
                     <TextBlock Text="ZenUpdate"
                                FontSize="20"
                                FontWeight="Bold"
-                               Foreground="{DynamicResource PrimaryHueMidBrush}"
+                               Foreground="{DynamicResource ZenPrimaryBrush}"
                                Margin="20,24,20,20" />
 
                     <Separator Margin="14,0,14,8" />
@@ -141,7 +235,7 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.Programs}">
-                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource ZenNavItemSelectedBackgroundBrush}" />
                                             <Setter Property="Foreground" Value="White" />
                                             <Setter Property="TextElement.Foreground" Value="White" />
                                         </DataTrigger>
@@ -173,7 +267,7 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.WindowsUpdates}">
-                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource ZenNavItemSelectedBackgroundBrush}" />
                                             <Setter Property="Foreground" Value="White" />
                                             <Setter Property="TextElement.Foreground" Value="White" />
                                         </DataTrigger>
@@ -205,7 +299,7 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.Drivers}">
-                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource ZenNavItemSelectedBackgroundBrush}" />
                                             <Setter Property="Foreground" Value="White" />
                                             <Setter Property="TextElement.Foreground" Value="White" />
                                         </DataTrigger>
@@ -237,7 +331,7 @@
                                 <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.Settings}">
-                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Background" Value="{DynamicResource ZenNavItemSelectedBackgroundBrush}" />
                                             <Setter Property="Foreground" Value="White" />
                                             <Setter Property="TextElement.Foreground" Value="White" />
                                         </DataTrigger>
@@ -281,8 +375,8 @@
               - Collapsible body (ListView + action buttons) shown only when IsOpen is true.
             The drawer keeps multi-select / copy / clear behavior from the previous design.
         -->
-        <Border Grid.Row="1"
-                Background="{StaticResource LogDrawerBackgroundBrush}"
+        <Border Grid.Row="2"
+                Background="{DynamicResource ZenLogDrawerMatteBrush}"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{DynamicResource MaterialDesignDivider}">
             <Grid>
@@ -335,7 +429,7 @@
                                        Opacity="0.85" />
 
                             <!-- Small badge shown only while errors are present. -->
-                            <Border Background="{StaticResource ErrorBadgeBrush}"
+                            <Border Background="{DynamicResource ZenErrorBrush}"
                                     CornerRadius="8"
                                     Padding="6,1"
                                     Margin="10,0,0,0"
@@ -375,6 +469,10 @@
                 <Grid Grid.Row="1"
                       Height="180"
                       Visibility="{Binding LogConsole.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <!--
+                        Virtualization + recycling keeps the log list fast even when
+                        bursts of entries arrive. Pixel-based scrolling stays smooth.
+                    -->
                     <ListView x:Name="LogConsoleListView"
                               ItemsSource="{Binding LogConsole.Entries}"
                               Background="Transparent"
@@ -383,6 +481,10 @@
                               FontFamily="Consolas"
                               FontSize="12"
                               SelectionMode="Extended"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              VirtualizingPanel.ScrollUnit="Pixel"
+                              ScrollViewer.CanContentScroll="True"
                               PreviewKeyDown="LogConsoleListView_OnPreviewKeyDown"
                               ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListView.ContextMenu>
@@ -401,7 +503,7 @@
                         </ListView.ContextMenu>
                         <ListView.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding}" Foreground="#FFAAAAAA" />
+                                <TextBlock Text="{Binding}" Foreground="{DynamicResource ZenMutedTextBrush}" />
                             </DataTemplate>
                         </ListView.ItemTemplate>
                     </ListView>

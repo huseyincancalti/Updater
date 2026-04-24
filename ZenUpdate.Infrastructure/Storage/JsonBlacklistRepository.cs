@@ -20,6 +20,9 @@ namespace ZenUpdate.Infrastructure.Storage;
 /// </summary>
 public sealed class JsonBlacklistRepository : IBlacklistRepository
 {
+    /// <inheritdoc />
+    public event Action? BlacklistChanged;
+
     private static readonly string FilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "ZenUpdate", "blacklist.json");
@@ -74,6 +77,8 @@ public sealed class JsonBlacklistRepository : IBlacklistRepository
     /// <inheritdoc />
     public async Task AddAsync(string packageId, string? reason = null)
     {
+        var changed = false;
+
         await _lock.WaitAsync();
         try
         {
@@ -97,16 +102,26 @@ public sealed class JsonBlacklistRepository : IBlacklistRepository
 
             await WriteEntriesUnsafeAsync(entries);
             _logger.Info($"Added '{normalizedPackageId}' to blacklist.");
+            changed = true;
         }
         finally
         {
             _lock.Release();
+        }
+
+        // Raise the event after the semaphore is released so subscribers that
+        // call GetEntriesAsync (which also acquires the semaphore) don't deadlock.
+        if (changed)
+        {
+            BlacklistChanged?.Invoke();
         }
     }
 
     /// <inheritdoc />
     public async Task RemoveAsync(string packageId)
     {
+        var changed = false;
+
         await _lock.WaitAsync();
         try
         {
@@ -124,11 +139,18 @@ public sealed class JsonBlacklistRepository : IBlacklistRepository
             {
                 await WriteEntriesUnsafeAsync(entries);
                 _logger.Info($"Removed '{normalizedPackageId}' from blacklist.");
+                changed = true;
             }
         }
         finally
         {
             _lock.Release();
+        }
+
+        // Raise after the semaphore is released for the same reason as AddAsync.
+        if (changed)
+        {
+            BlacklistChanged?.Invoke();
         }
     }
 

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using ZenUpdate.Core.Enums;
 
 namespace ZenUpdate.Core.Models;
 
@@ -33,6 +34,18 @@ public sealed class AppSettings : INotifyPropertyChanged
     {
         get => _minimizeToTray;
         set => SetField(ref _minimizeToTray, value);
+    }
+
+    private AppTheme _theme = AppTheme.Dark;
+
+    /// <summary>
+    /// The visual theme the user has selected. Default: <see cref="AppTheme.Dark"/>.
+    /// The value is applied at startup and whenever the user changes it on the Settings page.
+    /// </summary>
+    public AppTheme Theme
+    {
+        get => _theme;
+        set => SetField(ref _theme, value);
     }
 
     /// <summary>

@@ -43,12 +43,9 @@
         </StackPanel>
 
         <Border Grid.Row="2"
+                Style="{StaticResource ZenGlassPanelStyle}"
                 Margin="0,0,0,12"
                 Padding="12"
-                Background="{DynamicResource MaterialDesignPaper}"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
-                BorderThickness="1"
-                CornerRadius="6"
                 Visibility="{Binding IsInstallBatchRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
             <StackPanel>
                 <TextBlock Text="{Binding CurrentBatchProgressText}"
@@ -69,6 +66,8 @@
         </Border>
 
         <Grid Grid.Row="3">
+            <Border Style="{StaticResource ZenDataGridChromeStyle}"
+                    Visibility="{Binding HasUpdates, Converter={StaticResource BooleanToVisibilityConverter}}">
             <DataGrid x:Name="DriversDataGrid"
                       ItemsSource="{Binding Updates}"
                       AutoGenerateColumns="False"
@@ -78,7 +77,13 @@
                       SelectionMode="Extended"
                       SelectionUnit="FullRow"
                       ClipboardCopyMode="ExcludeHeader"
-                      Visibility="{Binding HasUpdates, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      ScrollViewer.CanContentScroll="True"
+                      Background="{DynamicResource MaterialDesignPaper}"
                       PreviewMouseRightButtonDown="DriversDataGrid_OnPreviewMouseRightButtonDown"
                       materialDesign:DataGridAssist.CellPadding="8 6"
                       materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
@@ -149,18 +154,17 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
 
-                    <DataGridTextColumn Header="Status"
-                                        Binding="{Binding Status}"
-                                        Width="100"
-                                        IsReadOnly="True" />
+                    <DataGridTemplateColumn Header="Status"
+                                            Width="110"
+                                            IsReadOnly="True"
+                                            SortMemberPath="Status"
+                                            CellTemplate="{StaticResource StatusBadgeCellTemplate}" />
                 </DataGrid.Columns>
             </DataGrid>
+            </Border>
 
-            <Border Padding="24"
-                    CornerRadius="8"
-                    BorderThickness="1"
-                    BorderBrush="{DynamicResource MaterialDesignDivider}"
-                    Background="{DynamicResource MaterialDesignPaper}"
+            <Border Style="{StaticResource ZenGlassPanelStyle}"
+                    Padding="24"
                     Visibility="{Binding IsEmptyStateVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="No driver updates found. Your devices look current for now."

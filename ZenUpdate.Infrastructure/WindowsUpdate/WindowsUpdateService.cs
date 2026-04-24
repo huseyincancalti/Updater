@@ -148,7 +148,7 @@ public sealed class WindowsUpdateService : IWindowsUpdateService
                     DetailMessage = detail
                 };
             }
-
+w
             dynamic dynTargetUpdate = targetUpdate;
             TryAcceptEula(dynTargetUpdate);
 

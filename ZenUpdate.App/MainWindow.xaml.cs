@@ -36,6 +36,18 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Minimizes the main window.</summary>
+    private void MinimizeButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+    /// <summary>Maximizes or restores the main window.</summary>
+    private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    }
+
+    /// <summary>Closes the main window.</summary>
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
+
     private void LogConsoleListView_OnPreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.C && Keyboard.Modifiers == ModifierKeys.Control)

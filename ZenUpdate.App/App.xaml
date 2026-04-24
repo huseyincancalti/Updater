@@ -15,6 +15,13 @@
                 <!-- MaterialDesign WPF component styles -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign2.Defaults.xaml" />
 
+                <!--
+                    Active Zen theme palette. ThemeService replaces this entry at runtime
+                    (identified by the ZenBackgroundBrush key) with ZenColors.Light.xaml
+                    when the user switches to the light theme.
+                -->
+                <ResourceDictionary Source="Themes/ZenColors.Dark.xaml" />
+
                 <!-- App-specific overrides and custom styles -->
                 <ResourceDictionary Source="Themes/MaterialOverrides.xaml" />
 

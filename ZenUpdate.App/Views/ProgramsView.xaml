@@ -54,12 +54,9 @@
         </StackPanel>
 
         <Border Grid.Row="2"
+                Style="{StaticResource ZenGlassPanelStyle}"
                 Margin="0,0,0,14"
                 Padding="14"
-                Background="{DynamicResource MaterialDesignPaper}"
-                BorderBrush="{DynamicResource MaterialDesignDivider}"
-                BorderThickness="1"
-                CornerRadius="8"
                 Visibility="{Binding IsUpdateBatchRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid>
                 <Grid.RowDefinitions>
@@ -114,6 +111,16 @@
         </Border>
 
         <Grid Grid.Row="3">
+            <!--
+                Virtualization flags keep scrolling smooth for large result sets:
+                  - IsVirtualizing + Recycling: only visible rows are realized, containers reused.
+                  - ScrollUnit="Pixel": smooth pixel scroll instead of row-jump.
+                  - EnableRowVirtualization/EnableColumnVirtualization: DataGrid-specific toggles.
+                DataGrid body stays solid (MaterialDesignPaper) for row readability; only the
+                outer chrome uses the glass-tinted frame.
+            -->
+            <Border Style="{StaticResource ZenDataGridChromeStyle}"
+                    Visibility="{Binding HasUpdates, Converter={StaticResource BooleanToVisibilityConverter}}">
             <DataGrid x:Name="ProgramsDataGrid"
                       ItemsSource="{Binding Updates}"
                       AutoGenerateColumns="False"
@@ -123,7 +130,13 @@
                       SelectionMode="Extended"
                       SelectionUnit="FullRow"
                       ClipboardCopyMode="ExcludeHeader"
-                      Visibility="{Binding HasUpdates, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      EnableRowVirtualization="True"
+                      EnableColumnVirtualization="True"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.ScrollUnit="Pixel"
+                      ScrollViewer.CanContentScroll="True"
+                      Background="{DynamicResource MaterialDesignPaper}"
                       PreviewMouseRightButtonDown="ProgramsDataGrid_OnPreviewMouseRightButtonDown"
                       materialDesign:DataGridAssist.CellPadding="8 6"
                       materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
@@ -215,19 +228,18 @@
                                         Width="110"
                                         IsReadOnly="True" />
 
-                    <DataGridTextColumn Header="Status"
-                                        Binding="{Binding Status}"
-                                        Width="100"
-                                        IsReadOnly="True" />
+                    <DataGridTemplateColumn Header="Status"
+                                            Width="110"
+                                            IsReadOnly="True"
+                                            SortMemberPath="Status"
+                                            CellTemplate="{StaticResource StatusBadgeCellTemplate}" />
 
                 </DataGrid.Columns>
             </DataGrid>
+            </Border>
 
-            <Border Padding="24"
-                    CornerRadius="8"
-                    BorderThickness="1"
-                    BorderBrush="{DynamicResource MaterialDesignDivider}"
-                    Background="{DynamicResource MaterialDesignPaper}"
+            <Border Style="{StaticResource ZenGlassPanelStyle}"
+                    Padding="24"
                     Visibility="{Binding IsEmptyStateVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel VerticalAlignment="Center">
                     <TextBlock Text="No application updates found. All clear for now."

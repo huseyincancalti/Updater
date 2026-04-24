@@ -1,7 +1,11 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ZenUpdate.App.Services;
+using ZenUpdate.Core.Enums;
 using ZenUpdate.Core.Interfaces;
 using ZenUpdate.Core.Models;
 
@@ -17,6 +21,7 @@ public sealed partial class SettingsViewModel : ObservableObject
     private readonly ISettingsRepository _settingsRepo;
     private readonly IBlacklistRepository _blacklistRepo;
     private readonly ILoggerService _logger;
+    private readonly IThemeService _themeService;
 
     /// <summary>The currently loaded application settings, bound to the Settings form.</summary>
     [ObservableProperty]
@@ -49,11 +54,18 @@ public sealed partial class SettingsViewModel : ObservableObject
     public SettingsViewModel(
         ISettingsRepository settingsRepo,
         IBlacklistRepository blacklistRepo,
-        ILoggerService logger)
+        ILoggerService logger,
+        IThemeService themeService)
     {
         _settingsRepo = settingsRepo;
         _blacklistRepo = blacklistRepo;
         _logger = logger;
+        _themeService = themeService;
+
+        // When ProgramsViewModel (or any other code) adds/removes blacklist entries,
+        // the repository fires BlacklistChanged. We refresh the visible list so the
+        // Settings page always stays in sync without a manual reload.
+        _blacklistRepo.BlacklistChanged += OnBlacklistChangedExternally;
 
         _ = InitializeAsync();
     }
@@ -167,6 +179,58 @@ public sealed partial class SettingsViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Removes every entry in <paramref name="entries"/> from the repository and
+    /// immediately refreshes the visible blacklist. Handles both single- and multi-selection.
+    /// </summary>
+    /// <param name="entries">The entries to remove. Duplicates are silently ignored.</param>
+    public async Task RemoveEntriesAsync(IEnumerable<BlacklistEntry> entries)
+    {
+        var toRemove = entries.ToList();
+        if (toRemove.Count == 0)
+        {
+            return;
+        }
+
+        try
+        {
+            foreach (var entry in toRemove)
+            {
+                await _blacklistRepo.RemoveAsync(entry.PackageId);
+            }
+
+            // Reload once here for an immediate, definitive UI update.
+            // The event-based reloads triggered by each RemoveAsync are benign extras.
+            await ReloadBlacklistEntriesAsync();
+
+            StatusMessage = toRemove.Count == 1
+                ? $"Removed '{toRemove[0].PackageId}' from blacklist."
+                : $"Removed {toRemove.Count} blacklist entries.";
+
+            _logger.Info($"Blacklist: removed {toRemove.Count} entry(ies).");
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Could not remove blacklist entries. See log for details.";
+            _logger.Error("Blacklist bulk remove failed.", ex);
+        }
+    }
+
+    /// <summary>
+    /// Called by the repository whenever the blacklist file changes from any source
+    /// (e.g. Programs page context menu). Runs a UI-thread reload so this page stays
+    /// in sync even when it is already open.
+    /// </summary>
+    private void OnBlacklistChangedExternally()
+    {
+        // The event may fire from a background thread; InvokeAsync queues the work
+        // on the WPF dispatcher so ObservableCollection mutations stay on the UI thread.
+        Application.Current.Dispatcher.InvokeAsync(async () =>
+        {
+            await ReloadBlacklistEntriesAsync();
+        });
+    }
+
     private bool CanAddBlacklistEntry()
     {
         return !string.IsNullOrWhiteSpace(NewBlacklistPackageId);
@@ -178,15 +242,42 @@ public sealed partial class SettingsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Automatically saves settings when a checkbox value changes,
-    /// so the user does not have to click "Save Settings" for boolean toggles.
+    /// Automatically saves settings when a toggle or dropdown value changes,
+    /// so the user does not have to click "Save Settings" for simple changes.
+    /// Theme changes also ask <see cref="IThemeService"/> to repaint the app immediately.
     /// </summary>
     private void OnSettingsPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName is nameof(AppSettings.ScanOnStartup) or nameof(AppSettings.MinimizeToTray))
+        switch (e.PropertyName)
         {
-            _ = SaveAsync();
+            case nameof(AppSettings.ScanOnStartup):
+            case nameof(AppSettings.MinimizeToTray):
+                _ = SaveAsync();
+                break;
+
+            case nameof(AppSettings.Theme):
+                ApplyThemeAndSave(Settings.Theme);
+                break;
         }
+    }
+
+    /// <summary>
+    /// Applies the selected theme to the running app and persists the choice.
+    /// Runs sequentially so the visual flip and file write stay in order.
+    /// </summary>
+    private void ApplyThemeAndSave(AppTheme theme)
+    {
+        try
+        {
+            _themeService.ApplyTheme(theme);
+            _logger.Info($"Theme switched to {theme}.");
+        }
+        catch (Exception ex)
+        {
+            _logger.Error("Failed to apply theme.", ex);
+        }
+
+        _ = SaveAsync();
     }
 
     private async Task InitializeAsync()

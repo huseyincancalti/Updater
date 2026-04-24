@@ -1,8 +1,8 @@
-using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using ZenUpdate.App.Collections;
 using ZenUpdate.Core.Enums;
 using ZenUpdate.Core.Interfaces;
 using ZenUpdate.Core.Models;
@@ -22,8 +22,18 @@ public sealed partial class DriversViewModel : ObservableObject
 
     private CancellationTokenSource? _operationCts;
 
-    /// <summary>The list of available driver updates displayed in the DataGrid.</summary>
-    public ObservableCollection<DriverUpdateItem> Updates { get; } = new();
+    /// <summary>
+    /// Tracks items currently subscribed to <see cref="OnUpdateItemPropertyChanged"/>.
+    /// Needed because bulk collection resets do not provide OldItems/NewItems.
+    /// </summary>
+    private readonly List<DriverUpdateItem> _subscribedItems = new();
+
+    /// <summary>
+    /// The list of available driver updates displayed in the DataGrid.
+    /// Uses <see cref="BulkObservableCollection{T}"/> so scan results swap in as a
+    /// single Reset instead of N per-item Add events.
+    /// </summary>
+    public BulkObservableCollection<DriverUpdateItem> Updates { get; } = new();
 
     /// <summary>True while any operation (scan or install) is running. Drives command enable/disable.</summary>
     [ObservableProperty]
@@ -112,8 +122,8 @@ public sealed partial class DriversViewModel : ObservableObject
             foreach (var item in results)
             {
                 item.Status = UpdateStatus.Pending;
-                Updates.Add(item);
             }
+            Updates.ReplaceAll(results);
 
             HasUpdates = Updates.Count > 0;
             HasScanned = true;
@@ -319,23 +329,57 @@ public sealed partial class DriversViewModel : ObservableObject
 
     private void OnUpdatesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
-        if (e.OldItems is not null)
+        if (e.Action == NotifyCollectionChangedAction.Reset)
         {
-            foreach (var item in e.OldItems.OfType<DriverUpdateItem>())
-            {
-                item.PropertyChanged -= OnUpdateItemPropertyChanged;
-            }
+            // ReplaceAll and Clear raise Reset, where OldItems/NewItems are null.
+            // Rebuild subscriptions from the current collection so checkbox changes
+            // immediately refresh InstallSelectedCommand.CanExecute.
+            UnsubscribeAllItems();
+            SubscribeAllItems();
         }
-
-        if (e.NewItems is not null)
+        else
         {
-            foreach (var item in e.NewItems.OfType<DriverUpdateItem>())
+            if (e.OldItems is not null)
             {
-                item.PropertyChanged += OnUpdateItemPropertyChanged;
+                foreach (var item in e.OldItems.OfType<DriverUpdateItem>())
+                {
+                    item.PropertyChanged -= OnUpdateItemPropertyChanged;
+                    _subscribedItems.Remove(item);
+                }
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (var item in e.NewItems.OfType<DriverUpdateItem>())
+                {
+                    item.PropertyChanged += OnUpdateItemPropertyChanged;
+                    _subscribedItems.Add(item);
+                }
             }
         }
 
         InstallSelectedCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Unsubscribes from every tracked driver item and clears the tracking list.</summary>
+    private void UnsubscribeAllItems()
+    {
+        foreach (var item in _subscribedItems)
+        {
+            item.PropertyChanged -= OnUpdateItemPropertyChanged;
+        }
+
+        _subscribedItems.Clear();
+    }
+
+    /// <summary>Subscribes to every item currently visible in <see cref="Updates"/>.</summary>
+    private void SubscribeAllItems()
+    {
+        foreach (var item in Updates)
+        {
+            item.PropertyChanged += OnUpdateItemPropertyChanged;
+            _subscribedItems.Add(item);
+        }
     }
 
     private void OnUpdateItemPropertyChanged(object? sender, PropertyChangedEventArgs e)

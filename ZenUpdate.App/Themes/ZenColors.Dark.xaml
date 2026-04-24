@@ -1,0 +1,88 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!--
+        ZenColors.Dark.xaml
+
+        Dark palette brushes. Keyed with Zen* names and consumed via DynamicResource
+        so ThemeService can swap this dictionary out for ZenColors.Light.xaml at runtime.
+        Palette values come from the agreed Dark palette:
+          Background #0F172A · Deep #09090B · Surface/Sidebar #1E1B4B
+          Success #059669 · Error #EF4444 · Warning/Installing #F59E0B
+    -->
+
+    <!--
+        Core solid anchors (kept for ThemeService marker + any solid fills).
+        Ambient and sidebar use separate gradient brushes for depth without
+        changing the main palette key contract.
+    -->
+    <SolidColorBrush x:Key="ZenBackgroundBrush"      Color="#0F172A" />
+    <SolidColorBrush x:Key="ZenDeepBackgroundBrush"  Color="#09090B" />
+    <SolidColorBrush x:Key="ZenSurfaceBrush"         Color="#1E1B4B" />
+    <SolidColorBrush x:Key="ZenSidebarBrush"         Color="#1E1B4B" />
+    <SolidColorBrush x:Key="ZenSidebarHoverBrush"    Color="#3D355C" />
+    <SolidColorBrush x:Key="ZenSidebarSelectedBrush" Color="#4F46E5" />
+    <SolidColorBrush x:Key="ZenDividerBrush"         Color="#1E293B" />
+
+    <!--
+        Subtle ambient window gradient: calmer top-left, soft indigo/violet
+        toward bottom-right. Stops stay close in luminance (not a loud wallpaper).
+    -->
+    <LinearGradientBrush x:Key="ZenAmbientBackgroundBrush" StartPoint="0,0" EndPoint="1,1" MappingMode="RelativeToBoundingBox">
+        <GradientStop Color="#0F172A" Offset="0" />
+        <GradientStop Color="#0E1228" Offset="0.42" />
+        <GradientStop Color="#16112F" Offset="0.72" />
+        <GradientStop Color="#1A1638" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Sidebar: gentle vertical depth (top slightly darker) -->
+    <LinearGradientBrush x:Key="ZenSidebarPanelBrush" StartPoint="0,0" EndPoint="0,1">
+        <GradientStop Color="#191543" Offset="0" />
+        <GradientStop Color="#1E1B4B" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Glass-lite panel fills (no blur — layered alpha over ambient bg) -->
+    <SolidColorBrush x:Key="ZenGlassPanelBrush" Color="#3A1E1B4B" />
+    <SolidColorBrush x:Key="ZenGlassBorderBrush" Color="#2EFFFFFF" />
+    <SolidColorBrush x:Key="ZenDataGridChromeBackgroundBrush" Color="#1AFFFFFF" />
+
+    <!-- Premium nav: selected item — horizontal depth -->
+    <LinearGradientBrush x:Key="ZenNavItemSelectedBackgroundBrush" StartPoint="0,0" EndPoint="1,0.5">
+        <GradientStop Color="#4F46E5" Offset="0" />
+        <GradientStop Color="#5B4FC9" Offset="1" />
+    </LinearGradientBrush>
+
+    <!-- Log drawer: flat matte (avoid glass here — reads as a console bar) -->
+    <SolidColorBrush x:Key="ZenLogDrawerMatteBrush" Color="#0A0A0F" />
+    <SolidColorBrush x:Key="ZenLogDrawerHeaderHoverBrush" Color="#12121C" />
+
+    <!-- ===== Text ===== -->
+    <SolidColorBrush x:Key="ZenTextBrush"       Color="#F1F5F9" />
+    <SolidColorBrush x:Key="ZenMutedTextBrush"  Color="#94A3B8" />
+
+    <!-- ===== Semantic accents ===== -->
+    <SolidColorBrush x:Key="ZenPrimaryBrush"  Color="#7C3AED" />
+    <SolidColorBrush x:Key="ZenSuccessBrush"  Color="#059669" />
+    <SolidColorBrush x:Key="ZenErrorBrush"    Color="#EF4444" />
+    <SolidColorBrush x:Key="ZenWarningBrush"  Color="#F59E0B" />
+
+    <!-- ===== Status badges (used by StatusBadgeCellTemplate in MaterialOverrides.xaml) ===== -->
+    <SolidColorBrush x:Key="ZenBadgePendingBackgroundBrush"     Color="#1E293B" />
+    <SolidColorBrush x:Key="ZenBadgePendingForegroundBrush"     Color="#94A3B8" />
+
+    <SolidColorBrush x:Key="ZenBadgeDownloadingBackgroundBrush" Color="#1E3A8A" />
+    <SolidColorBrush x:Key="ZenBadgeDownloadingForegroundBrush" Color="#60A5FA" />
+
+    <SolidColorBrush x:Key="ZenBadgeInstallingBackgroundBrush"  Color="#78350F" />
+    <SolidColorBrush x:Key="ZenBadgeInstallingForegroundBrush"  Color="#F59E0B" />
+
+    <SolidColorBrush x:Key="ZenBadgeSucceededBackgroundBrush"   Color="#064E3B" />
+    <SolidColorBrush x:Key="ZenBadgeSucceededForegroundBrush"   Color="#10B981" />
+
+    <SolidColorBrush x:Key="ZenBadgeFailedBackgroundBrush"      Color="#7F1D1D" />
+    <SolidColorBrush x:Key="ZenBadgeFailedForegroundBrush"      Color="#EF4444" />
+
+    <SolidColorBrush x:Key="ZenBadgeBlacklistedBackgroundBrush" Color="#0F1116" />
+    <SolidColorBrush x:Key="ZenBadgeBlacklistedForegroundBrush" Color="#64748B" />
+
+</ResourceDictionary>
