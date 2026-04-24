@@ -3,14 +3,14 @@ using ZenUpdate.Core.Models;
 namespace ZenUpdate.Core.Interfaces;
 
 /// <summary>
-/// Scans for and installs hardware driver updates using the Windows Update API (WUApiLib).
-/// Separate from <see cref="IWindowsUpdateService"/> because driver updates have different
-/// UI columns and user expectations (manufacturer, device class, etc.).
+/// Scans for and installs hardware driver updates by using the Windows Update API (WUApiLib).
+/// Separate from <see cref="IWindowsUpdateService"/> because driver updates expose different
+/// metadata and are presented on a dedicated page.
 /// </summary>
 public interface IDriverUpdateService
 {
     /// <summary>
-    /// Searches for available driver updates only (excludes OS software updates).
+    /// Searches for available driver updates only.
     /// </summary>
     /// <param name="cancellationToken">Allows the caller to cancel the search.</param>
     /// <returns>A read-only list of available driver updates.</returns>
@@ -20,10 +20,10 @@ public interface IDriverUpdateService
     /// Downloads and installs a single driver update.
     /// </summary>
     /// <param name="update">The driver update to install.</param>
-    /// <param name="progress">Reports installation progress as an integer percentage (0–100).</param>
+    /// <param name="progress">Reports internal install progress checkpoints as an integer percentage.</param>
     /// <param name="cancellationToken">Allows the caller to cancel the installation.</param>
-    /// <returns>True if installation succeeded; false otherwise.</returns>
-    Task<bool> InstallUpdateAsync(
+    /// <returns>The installation result, including success state and reboot requirement.</returns>
+    Task<DriverUpdateInstallResult> InstallUpdateAsync(
         DriverUpdateItem update,
         IProgress<int> progress,
         CancellationToken cancellationToken);

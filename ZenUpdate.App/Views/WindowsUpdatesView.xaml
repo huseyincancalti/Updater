@@ -10,6 +10,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -25,68 +26,165 @@
                     Style="{StaticResource MaterialDesignRaisedButton}"
                     Margin="0,0,8,0" />
 
+            <Button Content="Install Selected"
+                    Command="{Binding InstallSelectedCommand}"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Margin="0,0,8,0" />
+
             <Button Content="Cancel"
                     Command="{Binding CancelScanCommand}"
                     Style="{StaticResource MaterialDesignOutlinedButton}"
                     Margin="0,0,8,0"
                     Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
+            <!--
+                Scan-only thin progress bar.
+                Bound to IsScanning so it stays hidden while installs run;
+                install progress is shown by the dedicated feedback panel below.
+            -->
             <ProgressBar IsIndeterminate="True"
                          Width="120"
                          Height="4"
                          VerticalAlignment="Center"
-                         Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                         Visibility="{Binding IsScanning, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
         </StackPanel>
 
-        <DataGrid Grid.Row="2"
-                  ItemsSource="{Binding Updates}"
-                  AutoGenerateColumns="False"
-                  CanUserAddRows="False"
-                  CanUserDeleteRows="False"
-                  IsReadOnly="True"
-                  materialDesign:DataGridAssist.CellPadding="8 6"
-                  materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
-            <DataGrid.Columns>
+        <Border Grid.Row="2"
+                Margin="0,0,0,12"
+                Padding="12"
+                Background="{DynamicResource MaterialDesignPaper}"
+                BorderBrush="{DynamicResource MaterialDesignDivider}"
+                BorderThickness="1"
+                CornerRadius="6"
+                Visibility="{Binding IsInstallBatchRunning, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <StackPanel>
+                <TextBlock Text="{Binding CurrentBatchProgressText}"
+                           FontWeight="SemiBold"
+                           Margin="0,0,0,4" />
+                <TextBlock Text="{Binding CurrentUpdateTitle, StringFormat=Current update: {0}}"
+                           Margin="0,0,0,4" />
+                <TextBlock Text="{Binding CurrentKbArticle, StringFormat=KB: {0}}"
+                           Margin="0,0,0,6"
+                           Visibility="{Binding HasCurrentKbArticle, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <ProgressBar IsIndeterminate="True"
+                             Height="6"
+                             Margin="0,0,0,6" />
+                <TextBlock Text="{Binding CurrentInstallDetailText}"
+                           Opacity="0.7"
+                           FontSize="12" />
+            </StackPanel>
+        </Border>
 
-                <!--
-                    Star-width column with tooltip for long titles.
-                    SortMemberPath keeps column-header click sorting working.
-                -->
-                <DataGridTemplateColumn Header="Update"
-                                        Width="*"
-                                        IsReadOnly="True"
-                                        SortMemberPath="DisplayName">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding DisplayName}"
-                                       TextTrimming="CharacterEllipsis"
-                                       VerticalAlignment="Center"
-                                       Padding="2,0"
-                                       ToolTip="{Binding DisplayName}" />
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
+        <Grid Grid.Row="3">
+            <DataGrid x:Name="WindowsUpdatesDataGrid"
+                      ItemsSource="{Binding Updates}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      IsReadOnly="False"
+                      SelectionMode="Extended"
+                      SelectionUnit="FullRow"
+                      ClipboardCopyMode="ExcludeHeader"
+                      Visibility="{Binding HasUpdates, Converter={StaticResource BooleanToVisibilityConverter}}"
+                      PreviewMouseRightButtonDown="WindowsUpdatesDataGrid_OnPreviewMouseRightButtonDown"
+                      materialDesign:DataGridAssist.CellPadding="8 6"
+                      materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">
+                <DataGrid.ContextMenu>
+                    <ContextMenu Opened="WindowsUpdatesContextMenu_OnOpened">
+                        <MenuItem x:Name="CopyUpdateTitleMenuItem"
+                                  Header="Copy Update Title"
+                                  Click="CopyUpdateTitleMenuItem_OnClick" />
+                        <MenuItem x:Name="CopyKbArticleMenuItem"
+                                  Header="Copy KB Article"
+                                  Click="CopyKbArticleMenuItem_OnClick" />
+                        <MenuItem x:Name="CopyUpdateTitleAndKbMenuItem"
+                                  Header="Copy Update Title + KB"
+                                  Click="CopyUpdateTitleAndKbMenuItem_OnClick" />
+                        <MenuItem x:Name="CopySelectedUpdateTitlesMenuItem"
+                                  Header="Copy Selected Titles"
+                                  Click="CopySelectedUpdateTitlesMenuItem_OnClick" />
+                    </ContextMenu>
+                </DataGrid.ContextMenu>
+                <DataGrid.Columns>
 
-                <DataGridTextColumn Header="KB Article"
-                                    Binding="{Binding KbArticleId}"
-                                    Width="100"
-                                    IsReadOnly="True" />
+                    <DataGridCheckBoxColumn Header=""
+                                            Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                            Width="40"
+                                            IsReadOnly="False" />
 
-                <DataGridTextColumn Header="Severity"
-                                    Binding="{Binding MsrcSeverity}"
-                                    Width="100"
-                                    IsReadOnly="True" />
+                    <DataGridTemplateColumn Header="Update"
+                                            Width="*"
+                                            IsReadOnly="True"
+                                            SortMemberPath="DisplayName">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayName}"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           Padding="2,0"
+                                           ToolTip="{Binding DisplayName}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-                <DataGridTextColumn Header="Status"
-                                    Binding="{Binding Status}"
-                                    Width="90"
-                                    IsReadOnly="True" />
+                    <DataGridTemplateColumn Header="KB Article"
+                                            Width="120"
+                                            IsReadOnly="True"
+                                            SortMemberPath="KbArticleId">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding KbArticleId}"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           Padding="2,0"
+                                           ToolTip="{Binding KbArticleId}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-            </DataGrid.Columns>
-        </DataGrid>
+                    <DataGridTemplateColumn Header="Severity"
+                                            Width="110"
+                                            IsReadOnly="True"
+                                            SortMemberPath="MsrcSeverity">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding MsrcSeverity}"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           Padding="2,0"
+                                           ToolTip="{Binding MsrcSeverity}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
 
-        <TextBlock Grid.Row="3"
+                    <DataGridTextColumn Header="Status"
+                                        Binding="{Binding Status}"
+                                        Width="100"
+                                        IsReadOnly="True" />
+
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Border Padding="24"
+                    CornerRadius="8"
+                    BorderThickness="1"
+                    BorderBrush="{DynamicResource MaterialDesignDivider}"
+                    Background="{DynamicResource MaterialDesignPaper}"
+                    Visibility="{Binding IsEmptyStateVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="No Windows updates found. All clear for now."
+                               FontSize="18"
+                               FontWeight="SemiBold"
+                               Margin="0,0,0,8" />
+                    <TextBlock Text="Your system is up to date, so there is nothing to review here at the moment."
+                               Opacity="0.7"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <TextBlock Grid.Row="4"
                    Text="{Binding StatusMessage}"
                    Opacity="0.65"
                    FontSize="12"

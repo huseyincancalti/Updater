@@ -62,7 +62,12 @@ public partial class MainWindow : Window
 
     private void CopyAllLogsMenuItem_OnClick(object sender, RoutedEventArgs e)
     {
-        CopyEntriesToClipboard(LogConsoleListView.Items.OfType<LogEntry>());
+        CopyAllEntriesToClipboard();
+    }
+
+    private void CopyAllLogsButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        CopyAllEntriesToClipboard();
     }
 
     private void ClearLogsMenuItem_OnClick(object sender, RoutedEventArgs e)
@@ -71,6 +76,15 @@ public partial class MainWindow : Window
         {
             shellViewModel.LogConsole.Entries.Clear();
         }
+    }
+
+    /// <summary>
+    /// Copies every log entry currently in the list view to the clipboard,
+    /// using the same text format as the file logger.
+    /// </summary>
+    private void CopyAllEntriesToClipboard()
+    {
+        CopyEntriesToClipboard(LogConsoleListView.Items.OfType<LogEntry>());
     }
 
     private void CopySelectedEntriesToClipboard()

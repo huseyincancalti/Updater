@@ -14,11 +14,77 @@
 
     <!--
         DataContext is set in App.xaml.cs to ShellViewModel.
-        No code-behind logic here.
+        No code-behind logic here except small log drawer helpers.
     -->
 
     <!-- DataTemplates: map page ViewModels to their Views -->
     <Window.Resources>
+        <SolidColorBrush x:Key="SidebarNavHoverBrush" Color="#233657" />
+        <SolidColorBrush x:Key="SidebarNavSelectedBrush" Color="#2C4B78" />
+        <SolidColorBrush x:Key="LogDrawerBackgroundBrush" Color="#FF0D0D1A" />
+        <SolidColorBrush x:Key="LogDrawerHeaderHoverBrush" Color="#FF161626" />
+        <SolidColorBrush x:Key="ErrorBadgeBrush" Color="#FFD64545" />
+
+        <Style x:Key="SidebarNavButtonStyle"
+               TargetType="Button"
+               BasedOn="{StaticResource MaterialDesignFlatButton}">
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Margin" Value="14,4" />
+            <Setter Property="Padding" Value="16,10" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="TextElement.FontSize" Value="13" />
+            <Setter Property="TextElement.FontWeight" Value="SemiBold" />
+            <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SidebarNavHoverBrush}" />
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                    <Setter Property="Foreground" Value="White" />
+                    <Setter Property="TextElement.Foreground" Value="White" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!--
+            Flat toggle button used as the log drawer header.
+            Keeps the full bar clickable while respecting the app's dark theme.
+        -->
+        <Style x:Key="LogDrawerHeaderToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="HeaderBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center"
+                                              HorizontalAlignment="Stretch" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="HeaderBorder"
+                                        Property="Background"
+                                        Value="{StaticResource LogDrawerHeaderHoverBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <DataTemplate DataType="{x:Type vm:ProgramsViewModel}">
             <views:ProgramsView />
         </DataTemplate>
@@ -37,14 +103,14 @@
         <Grid.RowDefinitions>
             <!-- Main content area -->
             <RowDefinition Height="*" />
-            <!-- Log console panel -->
-            <RowDefinition Height="160" />
+            <!-- Log drawer: Auto so the row only takes as much space as the drawer needs. -->
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- ===== Main Area: Sidebar + Content ===== -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="200" />
+                <ColumnDefinition Width="224" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -60,60 +126,140 @@
                                FontSize="20"
                                FontWeight="Bold"
                                Foreground="{DynamicResource PrimaryHueMidBrush}"
-                               Margin="20,24,20,24" />
+                               Margin="20,24,20,20" />
 
-                    <Separator Margin="8,0" />
+                    <Separator Margin="14,0,14,8" />
 
                     <!-- Navigation buttons -->
                     <!-- Navigation: Buttons support Command binding; ListBoxItem does not -->
                     <StackPanel>
 
                         <Button x:Name="NavPrograms"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="20,12"
                                 Command="{Binding NavigateToCommand}"
                                 CommandParameter="{x:Static vm:AppPage.Programs}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="PackageVariant" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <TextBlock Text="Programs" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.Programs}">
+                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="TextElement.Foreground" Value="White" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="PackageVariant"
+                                                         Width="20"
+                                                         Height="20"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2"
+                                           Text="Programs"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
                         </Button>
 
                         <Button x:Name="NavWindowsUpdates"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="20,12"
                                 Command="{Binding NavigateToCommand}"
                                 CommandParameter="{x:Static vm:AppPage.WindowsUpdates}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="MicrosoftWindows" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <TextBlock Text="Windows Updates" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.WindowsUpdates}">
+                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="TextElement.Foreground" Value="White" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="MicrosoftWindows"
+                                                         Width="20"
+                                                         Height="20"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2"
+                                           Text="Windows Updates"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
                         </Button>
 
                         <Button x:Name="NavDrivers"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="20,12"
                                 Command="{Binding NavigateToCommand}"
                                 CommandParameter="{x:Static vm:AppPage.Drivers}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Cpu64Bit" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <TextBlock Text="Drivers" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.Drivers}">
+                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="TextElement.Foreground" Value="White" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="Cpu64Bit"
+                                                         Width="20"
+                                                         Height="20"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2"
+                                           Text="Drivers"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
                         </Button>
 
                         <Button x:Name="NavSettings"
-                                Style="{StaticResource MaterialDesignFlatButton}"
-                                HorizontalContentAlignment="Left"
-                                Padding="20,12"
                                 Command="{Binding NavigateToCommand}"
                                 CommandParameter="{x:Static vm:AppPage.Settings}">
-                            <StackPanel Orientation="Horizontal">
-                                <materialDesign:PackIcon Kind="Cog" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <TextBlock Text="Settings" VerticalAlignment="Center" />
-                            </StackPanel>
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource SidebarNavButtonStyle}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding SelectedPage}" Value="{x:Static vm:AppPage.Settings}">
+                                            <Setter Property="Background" Value="{StaticResource SidebarNavSelectedBrush}" />
+                                            <Setter Property="Foreground" Value="White" />
+                                            <Setter Property="TextElement.Foreground" Value="White" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <materialDesign:PackIcon Kind="Cog"
+                                                         Width="20"
+                                                         Height="20"
+                                                         VerticalAlignment="Center" />
+                                <TextBlock Grid.Column="2"
+                                           Text="Settings"
+                                           VerticalAlignment="Center"
+                                           TextWrapping="NoWrap"
+                                           TextTrimming="CharacterEllipsis" />
+                            </Grid>
                         </Button>
 
                     </StackPanel>
@@ -127,55 +273,139 @@
                             Margin="0" />
         </Grid>
 
-        <!-- ===== Bottom Log Console Panel ===== -->
+        <!-- ===== Bottom Log Drawer (collapsible) ===== -->
+        <!--
+            Structure:
+              - Always-visible clickable header (ToggleButton) with a chevron icon,
+                'Log Console' label and an error badge.
+              - Collapsible body (ListView + action buttons) shown only when IsOpen is true.
+            The drawer keeps multi-select / copy / clear behavior from the previous design.
+        -->
         <Border Grid.Row="1"
-                Background="#FF0D0D1A"
+                Background="{StaticResource LogDrawerBackgroundBrush}"
                 BorderThickness="0,1,0,0"
                 BorderBrush="{DynamicResource MaterialDesignDivider}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0"
-                           Text="LOG CONSOLE"
-                           FontSize="10"
-                           FontWeight="Bold"
-                           Opacity="0.5"
-                           Margin="12,6,0,4" />
+                <!-- Header bar (clickable toggle) -->
+                <Grid Grid.Row="0" Height="36">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <ListView Grid.Row="1"
-                          x:Name="LogConsoleListView"
-                          ItemsSource="{Binding LogConsole.Entries}"
-                          Background="Transparent"
-                          BorderThickness="0"
-                          Margin="8,0,8,8"
-                          FontFamily="Consolas"
-                          FontSize="12"
-                          SelectionMode="Extended"
-                          PreviewKeyDown="LogConsoleListView_OnPreviewKeyDown"
-                          ScrollViewer.VerticalScrollBarVisibility="Auto">
-                    <ListView.ContextMenu>
-                        <ContextMenu Opened="LogConsoleContextMenu_OnOpened">
-                            <MenuItem x:Name="CopySelectedLogMenuItem"
-                                      Header="Copy Selected"
-                                      Click="CopySelectedLogMenuItem_OnClick" />
-                            <MenuItem x:Name="CopyAllLogsMenuItem"
-                                      Header="Copy All"
-                                      Click="CopyAllLogsMenuItem_OnClick" />
-                            <Separator />
-                            <MenuItem x:Name="ClearLogsMenuItem"
-                                      Header="Clear Logs"
-                                      Click="ClearLogsMenuItem_OnClick" />
-                        </ContextMenu>
-                    </ListView.ContextMenu>
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding}" Foreground="#FFAAAAAA" />
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
+                    <ToggleButton Grid.Column="0"
+                                  IsChecked="{Binding LogConsole.IsOpen, Mode=TwoWay}"
+                                  Style="{StaticResource LogDrawerHeaderToggleStyle}"
+                                  ToolTip="Show or hide the log console">
+                        <StackPanel Orientation="Horizontal">
+                            <!-- Chevron rotates 180° when the drawer is open. -->
+                            <materialDesign:PackIcon Kind="ChevronUp"
+                                                     Width="18"
+                                                     Height="18"
+                                                     VerticalAlignment="Center"
+                                                     Margin="0,0,8,0"
+                                                     RenderTransformOrigin="0.5,0.5">
+                                <materialDesign:PackIcon.RenderTransform>
+                                    <RotateTransform x:Name="LogChevronRotation" Angle="0" />
+                                </materialDesign:PackIcon.RenderTransform>
+                                <materialDesign:PackIcon.Style>
+                                    <Style TargetType="materialDesign:PackIcon">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding LogConsole.IsOpen}" Value="True">
+                                                <Setter Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="180" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </materialDesign:PackIcon.Style>
+                            </materialDesign:PackIcon>
+
+                            <TextBlock Text="Log Console"
+                                       FontSize="11"
+                                       FontWeight="SemiBold"
+                                       VerticalAlignment="Center"
+                                       Opacity="0.85" />
+
+                            <!-- Small badge shown only while errors are present. -->
+                            <Border Background="{StaticResource ErrorBadgeBrush}"
+                                    CornerRadius="8"
+                                    Padding="6,1"
+                                    Margin="10,0,0,0"
+                                    VerticalAlignment="Center"
+                                    Visibility="{Binding LogConsole.HasErrors, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <TextBlock Text="{Binding LogConsole.ErrorCount, StringFormat={}{0} error(s)}"
+                                           FontSize="10"
+                                           FontWeight="SemiBold"
+                                           Foreground="White" />
+                            </Border>
+                        </StackPanel>
+                    </ToggleButton>
+
+                    <!-- Right-side header actions (visible only while the drawer is open). -->
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal"
+                                Margin="0,0,10,0"
+                                Visibility="{Binding LogConsole.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Button Content="Copy All"
+                                Click="CopyAllLogsButton_OnClick"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Padding="8,0"
+                                Height="28"
+                                FontSize="11"
+                                ToolTip="Copy all visible log entries to the clipboard" />
+                        <Button Content="Clear"
+                                Command="{Binding LogConsole.ClearEntriesCommand}"
+                                Style="{StaticResource MaterialDesignFlatButton}"
+                                Padding="8,0"
+                                Height="28"
+                                FontSize="11"
+                                ToolTip="Remove all current log entries" />
+                    </StackPanel>
+                </Grid>
+
+                <!-- Drawer body (only rendered when IsOpen). -->
+                <Grid Grid.Row="1"
+                      Height="180"
+                      Visibility="{Binding LogConsole.IsOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <ListView x:Name="LogConsoleListView"
+                              ItemsSource="{Binding LogConsole.Entries}"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Margin="10,0,10,10"
+                              FontFamily="Consolas"
+                              FontSize="12"
+                              SelectionMode="Extended"
+                              PreviewKeyDown="LogConsoleListView_OnPreviewKeyDown"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ContextMenu>
+                            <ContextMenu Opened="LogConsoleContextMenu_OnOpened">
+                                <MenuItem x:Name="CopySelectedLogMenuItem"
+                                          Header="Copy Selected"
+                                          Click="CopySelectedLogMenuItem_OnClick" />
+                                <MenuItem x:Name="CopyAllLogsMenuItem"
+                                          Header="Copy All"
+                                          Click="CopyAllLogsMenuItem_OnClick" />
+                                <Separator />
+                                <MenuItem x:Name="ClearLogsMenuItem"
+                                          Header="Clear Logs"
+                                          Click="ClearLogsMenuItem_OnClick" />
+                            </ContextMenu>
+                        </ListView.ContextMenu>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="#FFAAAAAA" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
             </Grid>
         </Border>
 

@@ -22,8 +22,8 @@ public interface IWindowsUpdateService
     /// <param name="update">The OS update to install.</param>
     /// <param name="progress">Reports installation progress as an integer percentage (0–100).</param>
     /// <param name="cancellationToken">Allows the caller to cancel the installation.</param>
-    /// <returns>True if installation succeeded; false otherwise.</returns>
-    Task<bool> InstallUpdateAsync(
+    /// <returns>The installation result, including success state and reboot requirement.</returns>
+    Task<WindowsUpdateInstallResult> InstallUpdateAsync(
         WindowsUpdateItem update,
         IProgress<int> progress,
         CancellationToken cancellationToken);

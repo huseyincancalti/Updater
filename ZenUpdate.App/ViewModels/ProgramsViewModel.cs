@@ -16,6 +16,8 @@ namespace ZenUpdate.App.ViewModels;
 /// </summary>
 public sealed partial class ProgramsViewModel : ObservableObject
 {
+    private const string NoUpdatesMessage = "No application updates found. All clear for now.";
+
     private readonly IWingetScanner _scanner;
     private readonly IWingetInstaller _installer;
     private readonly IBlacklistRepository _blacklistRepository;
@@ -23,15 +25,27 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
     private CancellationTokenSource? _operationCts;
 
-    /// <summary>True while a scan or update batch is running.</summary>
+    /// <summary>True while any operation (scan or install) is running. Drives command enable/disable.</summary>
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ScanCommand))]
     [NotifyCanExecuteChangedFor(nameof(InstallSelectedCommand))]
     private bool _isBusy;
 
+    /// <summary>True only while a scan (initial or post-install refresh) is running.</summary>
+    [ObservableProperty]
+    private bool _isScanning;
+
     /// <summary>Short status line shown below the DataGrid.</summary>
     [ObservableProperty]
     private string _statusMessage = "Press 'Scan for Updates' to start.";
+
+    /// <summary>True after the user has completed at least one scan attempt.</summary>
+    [ObservableProperty]
+    private bool _hasScanned;
+
+    /// <summary>True when the current result set contains one or more updates.</summary>
+    [ObservableProperty]
+    private bool _hasUpdates;
 
     /// <summary>True while the selected-app Winget update batch is running.</summary>
     [ObservableProperty]
@@ -45,9 +59,28 @@ public sealed partial class ProgramsViewModel : ObservableObject
     [ObservableProperty]
     private string _currentAppName = string.Empty;
 
+    /// <summary>Shows the completed-item batch percentage for the active update run.</summary>
+    [ObservableProperty]
+    private int _overallProgressPercent;
+
+    /// <summary>Shows the current-item progress percentage when a reliable value is available.</summary>
+    [ObservableProperty]
+    private int _currentItemProgressPercent;
+
+    /// <summary>True when the current-item progress bar should stay indeterminate.</summary>
+    [ObservableProperty]
+    private bool _isCurrentItemProgressIndeterminate = true;
+
+    /// <summary>Shows the current-item progress text in a user-friendly way.</summary>
+    [ObservableProperty]
+    private string _currentItemProgressText = string.Empty;
+
     /// <summary>Shows extra progress detail for the current application update.</summary>
     [ObservableProperty]
     private string _currentInstallDetailText = string.Empty;
+
+    /// <summary>True when the Programs empty-state panel should be shown instead of the grid.</summary>
+    public bool IsEmptyStateVisible => HasScanned && !HasUpdates && !IsBusy;
 
     /// <summary>
     /// The list of available application updates displayed in the DataGrid.
@@ -82,7 +115,6 @@ public sealed partial class ProgramsViewModel : ObservableObject
     {
         if (IsBusy)
         {
-            _logger.Info("Scan request ignored because another operation is already running.");
             return;
         }
 
@@ -90,6 +122,9 @@ public sealed partial class ProgramsViewModel : ObservableObject
         ClearUpdateFeedback();
 
         IsBusy = true;
+        IsScanning = true;
+        HasScanned = false;
+        HasUpdates = false;
         StatusMessage = "Scanning for updates...";
         Updates.Clear();
 
@@ -106,13 +141,16 @@ public sealed partial class ProgramsViewModel : ObservableObject
                 }
             });
 
+            HasUpdates = Updates.Count > 0;
+            HasScanned = true;
+
             StatusMessage = Updates.Count == 0
-                ? "All applications are up to date."
+                ? NoUpdatesMessage
                 : $"{Updates.Count} update(s) available.";
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = "Operation cancelled.";
+            StatusMessage = "Scan cancelled.";
             _logger.Info("Programs scan was cancelled by the user.");
         }
         catch (Exception ex)
@@ -137,7 +175,7 @@ public sealed partial class ProgramsViewModel : ObservableObject
             return;
         }
 
-        StatusMessage = "Cancelling operation...";
+        StatusMessage = "Cancelling...";
 
         if (IsUpdateBatchRunning)
         {
@@ -164,8 +202,8 @@ public sealed partial class ProgramsViewModel : ObservableObject
         var selectedItems = Updates.Where(item => item.IsSelected).ToList();
         if (selectedItems.Count == 0)
         {
-            StatusMessage = "No applications selected.";
-            _logger.Info("Update Selected clicked with no applications selected.");
+            StatusMessage = "Select at least one application to update.";
+            _logger.Info("Programs update requested with no selected applications.");
             return;
         }
 
@@ -173,10 +211,11 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
         IsBusy = true;
         IsUpdateBatchRunning = true;
+        ResetProgressFeedback();
         _logger.Info("Winget update batch started.");
         _logger.Info($"{selectedItems.Count} application(s) selected for update.");
 
-        var succeededCount = 0;
+        var succeededItems = new List<AppUpdateItem>();
         var failedCount = 0;
         var batchCompletedCleanly = false;
 
@@ -191,6 +230,7 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
                 try
                 {
+                    SetCurrentInstallPhase("Installing...", null);
                     var progress = new Progress<int>(OnInstallProgressReported);
                     var success = await _installer.InstallUpdateAsync(item, progress, _operationCts.Token);
 
@@ -198,12 +238,14 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
                     if (success)
                     {
-                        succeededCount++;
+                        succeededItems.Add(item);
                     }
                     else
                     {
                         failedCount++;
                     }
+
+                    UpdateOverallProgress(succeededItems.Count + failedCount, selectedItems.Count);
                 }
                 catch (OperationCanceledException)
                 {
@@ -212,14 +254,14 @@ public sealed partial class ProgramsViewModel : ObservableObject
                 }
             }
 
-            StatusMessage = $"Update complete. {succeededCount} succeeded, {failedCount} failed.";
-            _logger.Info($"Winget update batch completed. Total: {selectedItems.Count}, Succeeded: {succeededCount}, Failed: {failedCount}.");
+            StatusMessage = $"Application updates completed. {succeededItems.Count} succeeded, {failedCount} failed.";
+            _logger.Info($"Winget update batch completed. Total: {selectedItems.Count}, Succeeded: {succeededItems.Count}, Failed: {failedCount}.");
             batchCompletedCleanly = true;
         }
         catch (OperationCanceledException)
         {
-            StatusMessage = $"Update cancelled. {succeededCount} succeeded, {failedCount} failed.";
-            _logger.Info($"Winget update batch was cancelled. Completed before cancel: {succeededCount + failedCount} of {selectedItems.Count}.");
+            StatusMessage = $"Application updates cancelled. {succeededItems.Count} succeeded, {failedCount} failed.";
+            _logger.Info($"Winget update batch was cancelled. Completed before cancel: {succeededItems.Count + failedCount} of {selectedItems.Count}.");
         }
         catch (Exception ex)
         {
@@ -231,69 +273,53 @@ public sealed partial class ProgramsViewModel : ObservableObject
             CompleteOperation();
         }
 
-        if (batchCompletedCleanly)
+        if (batchCompletedCleanly && succeededItems.Count > 0)
         {
-            await AutoRefreshAfterBatchAsync();
+            await RemoveSucceededItemsLocallyAsync(succeededItems);
         }
     }
 
     /// <summary>
-    /// Waits briefly so the user can see Succeeded/Failed row states, then runs
-    /// a fresh scan to remove apps that are no longer upgradeable.
-    /// Called automatically after a clean update batch — never after a cancel.
+    /// Waits briefly so the user can see the final <c>Succeeded</c> row states,
+    /// then quietly removes successfully updated rows from the visible list.
+    /// No full rescan is performed; the user can press 'Scan for Updates' to
+    /// re-verify when they want.
     /// </summary>
-    private async Task AutoRefreshAfterBatchAsync()
+    private async Task RemoveSucceededItemsLocallyAsync(List<AppUpdateItem> succeededItems)
     {
-        // Short pause so Succeeded / Failed states are visible before the list changes.
+        // Short pause so the Succeeded state is visible before the row disappears.
         await Task.Delay(TimeSpan.FromSeconds(2));
 
+        // Another operation may have started during the pause (e.g. user pressed Scan).
+        // In that case, skip the silent removal to avoid fighting the new list.
         if (IsBusy)
         {
-            _logger.Info("Auto-refresh skipped because another operation started during the pause.");
+            _logger.Info("Programs local removal skipped because another operation started during the pause.");
             return;
         }
 
-        IsBusy = true;
-        StatusMessage = "Refreshing update list...";
-        _logger.Info("Auto-refresh scan started after update batch.");
-
-        try
+        foreach (var item in succeededItems)
         {
-            var results = await _scanner.GetAvailableUpdatesAsync(CancellationToken.None);
-
-            await Application.Current.Dispatcher.InvokeAsync(() =>
-            {
-                Updates.Clear();
-                foreach (var item in results)
-                {
-                    item.Status = UpdateStatus.Pending;
-                    Updates.Add(item);
-                }
-            });
-
-            StatusMessage = Updates.Count == 0
-                ? "All applications are up to date."
-                : $"{Updates.Count} update(s) available.";
-
-            _logger.Info($"Auto-refresh scan completed. {Updates.Count} update(s) remaining.");
+            Updates.Remove(item);
         }
-        catch (Exception ex)
-        {
-            StatusMessage = "Auto-refresh failed. Press 'Scan for Updates' to retry.";
-            _logger.Error("Auto-refresh scan encountered an unexpected error.", ex);
-        }
-        finally
-        {
-            IsBusy = false;
-            ScanCommand.NotifyCanExecuteChanged();
-            InstallSelectedCommand.NotifyCanExecuteChanged();
-        }
+
+        HasUpdates = Updates.Count > 0;
+        NotifyVisibilityPropertiesChanged();
+        InstallSelectedCommand.NotifyCanExecuteChanged();
+
+        StatusMessage = Updates.Count == 0
+            ? "Update complete. No application updates remaining."
+            : $"Update complete. {Updates.Count} application update(s) still available.";
+
+        _logger.Info($"Programs removed {succeededItems.Count} succeeded row(s) from the visible list.");
     }
 
     private bool CanInstall() => !IsBusy && Updates.Any(item => item.IsSelected);
 
     /// <summary>
-    /// Adds the given program rows to the blacklist and removes newly blacklisted items from the visible list.
+    /// Adds the given program rows to the blacklist and removes them from the visible
+    /// list immediately. Rows that are already blacklisted are also removed from the
+    /// visible list, because the user's intent is to hide them right now.
     /// </summary>
     /// <param name="items">The program rows to blacklist.</param>
     /// <returns>The number of package IDs newly added to the blacklist.</returns>
@@ -311,6 +337,12 @@ public sealed partial class ProgramsViewModel : ObservableObject
             return 0;
         }
 
+        // Immediate local removal: hide every selected row from the grid before any I/O.
+        // This keeps the UI responsive and avoids waiting for a repository refresh.
+        var candidateIds = candidates.Select(c => c.WingetPackageId).ToList();
+        RemoveVisibleItemsByPackageId(candidateIds);
+
+        // Persist additions. Rows already in the repository are left untouched.
         var existingIds = await _blacklistRepository.GetBlacklistedIdsAsync();
         var knownIds = existingIds.ToHashSet(StringComparer.OrdinalIgnoreCase);
         var addedIds = new List<string>();
@@ -328,11 +360,11 @@ public sealed partial class ProgramsViewModel : ObservableObject
 
         if (addedIds.Count == 0)
         {
-            StatusMessage = "Selected package IDs are already blacklisted.";
+            StatusMessage = candidateIds.Count == 1
+                ? "Already blacklisted. Hidden from the list."
+                : $"Hidden {candidateIds.Count} already-blacklisted item(s).";
             return 0;
         }
-
-        RemoveVisibleItemsByPackageId(addedIds);
 
         StatusMessage = addedIds.Count == 1
             ? $"Added '{addedIds[0]}' to blacklist."
@@ -345,10 +377,12 @@ public sealed partial class ProgramsViewModel : ObservableObject
     private async Task ShowInstallingStateAsync(AppUpdateItem item, int currentIndex, int totalCount)
     {
         item.Status = UpdateStatus.Installing;
-        CurrentBatchProgressText = $"Updating {currentIndex + 1} of {totalCount}...";
+        CurrentBatchProgressText = $"Updating {currentIndex + 1} of {totalCount}";
         CurrentAppName = item.DisplayName;
-        CurrentInstallDetailText = "Waiting for winget to finish...";
-        StatusMessage = $"{CurrentBatchProgressText} Current app: {item.DisplayName}";
+        CurrentItemProgressPercent = 0;
+        IsCurrentItemProgressIndeterminate = true;
+        CurrentItemProgressText = "Current item progress: In progress...";
+        SetCurrentInstallPhase("Preparing...", "Updating selected applications...");
 
         await Task.Yield();
     }
@@ -357,11 +391,17 @@ public sealed partial class ProgramsViewModel : ObservableObject
     {
         if (percent is > 0 and < 100)
         {
-            CurrentInstallDetailText = $"Winget reported {percent}%...";
+            CurrentItemProgressPercent = percent;
+            IsCurrentItemProgressIndeterminate = false;
+            CurrentItemProgressText = $"Current item progress: {percent}%";
+            SetCurrentInstallPhase("Installing...", null);
         }
         else if (percent >= 100)
         {
-            CurrentInstallDetailText = "Finalizing update...";
+            CurrentItemProgressPercent = 0;
+            IsCurrentItemProgressIndeterminate = true;
+            CurrentItemProgressText = "Current item progress: Finalizing...";
+            SetCurrentInstallPhase("Finalizing...", null);
         }
     }
 
@@ -405,6 +445,24 @@ public sealed partial class ProgramsViewModel : ObservableObject
         {
             Updates.Remove(item);
         }
+
+        HasUpdates = Updates.Count > 0;
+        NotifyVisibilityPropertiesChanged();
+    }
+
+    partial void OnHasScannedChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEmptyStateVisible));
+    }
+
+    partial void OnHasUpdatesChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEmptyStateVisible));
+    }
+
+    partial void OnIsBusyChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsEmptyStateVisible));
     }
 
     private void ResetOperationCancellation()
@@ -413,12 +471,48 @@ public sealed partial class ProgramsViewModel : ObservableObject
         _operationCts = new CancellationTokenSource();
     }
 
+    private void NotifyVisibilityPropertiesChanged()
+    {
+        OnPropertyChanged(nameof(IsEmptyStateVisible));
+    }
+
+    private void ResetProgressFeedback()
+    {
+        OverallProgressPercent = 0;
+        CurrentItemProgressPercent = 0;
+        IsCurrentItemProgressIndeterminate = true;
+        CurrentItemProgressText = "Current item progress: In progress...";
+    }
+
+    private void UpdateOverallProgress(int completedItemCount, int totalItemCount)
+    {
+        if (totalItemCount <= 0)
+        {
+            OverallProgressPercent = 0;
+            return;
+        }
+
+        OverallProgressPercent = completedItemCount * 100 / totalItemCount;
+    }
+
+    private void SetCurrentInstallPhase(string phaseText, string? statusMessage)
+    {
+        CurrentInstallDetailText = phaseText;
+
+        if (!string.IsNullOrWhiteSpace(statusMessage))
+        {
+            StatusMessage = statusMessage;
+        }
+    }
+
     private void CompleteOperation()
     {
         IsBusy = false;
+        IsScanning = false;
         InstallSelectedCommand.NotifyCanExecuteChanged();
         ScanCommand.NotifyCanExecuteChanged();
         ClearUpdateFeedback();
+        NotifyVisibilityPropertiesChanged();
     }
 
     private void ClearUpdateFeedback()
@@ -426,6 +520,10 @@ public sealed partial class ProgramsViewModel : ObservableObject
         IsUpdateBatchRunning = false;
         CurrentBatchProgressText = string.Empty;
         CurrentAppName = string.Empty;
+        OverallProgressPercent = 0;
+        CurrentItemProgressPercent = 0;
+        IsCurrentItemProgressIndeterminate = true;
+        CurrentItemProgressText = string.Empty;
         CurrentInstallDetailText = string.Empty;
     }
 }
