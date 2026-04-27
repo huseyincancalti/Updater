@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows;
 using MaterialDesignThemes.Wpf;
 using ZenUpdate.Core.Enums;
@@ -12,6 +13,8 @@ namespace ZenUpdate.App.Services;
 ///      throughout the app via <c>DynamicResource</c>.
 ///   2. Asking <see cref="PaletteHelper"/> to flip Material Design's base theme
 ///      so bundled brushes (MaterialDesignPaper, MaterialDesignBody, etc.) follow.
+/// Both steps are independently guarded so a failure in one never aborts the other,
+/// and a complete failure never blocks application startup.
 /// </summary>
 public sealed class ThemeService : IThemeService
 {
@@ -33,38 +36,62 @@ public sealed class ThemeService : IThemeService
             return;
         }
 
-        ReplaceZenDictionary(app, theme);
-        ApplyMaterialDesignBaseTheme(theme);
-    }
+        // Each step is wrapped separately. If the Zen brushes swap fails, we
+        // still try to flip the Material Design base theme (and vice versa),
+        // and as a last resort we attempt to fall back to Dark. Under no
+        // circumstances does a theme failure propagate up to OnStartup.
+        var zenSwapOk = TryReplaceZenDictionary(app, theme);
+        var mdSwapOk = TryApplyMaterialDesignBaseTheme(theme);
 
-    /// <summary>
-    /// Finds the previously merged Zen dictionary (identified by <see cref="ZenThemeMarkerKey"/>)
-    /// and replaces it in place. Inserts a new one if none is merged yet.
-    /// </summary>
-    private static void ReplaceZenDictionary(Application app, AppTheme theme)
-    {
-        var uri = theme == AppTheme.Light ? LightThemeUri : DarkThemeUri;
-        var newDict = new ResourceDictionary { Source = uri };
-
-        var dictionaries = app.Resources.MergedDictionaries;
-        for (var i = 0; i < dictionaries.Count; i++)
+        if ((!zenSwapOk || !mdSwapOk) && theme != AppTheme.Dark)
         {
-            if (dictionaries[i].Contains(ZenThemeMarkerKey))
-            {
-                dictionaries[i] = newDict;
-                return;
-            }
+            Debug.WriteLine($"[ZenUpdate] Theme '{theme}' failed to apply; reverting to Dark.");
+            TryReplaceZenDictionary(app, AppTheme.Dark);
+            TryApplyMaterialDesignBaseTheme(AppTheme.Dark);
         }
-
-        dictionaries.Add(newDict);
     }
 
-    /// <summary>Flips Material Design's bundled Light/Dark base theme while preserving the primary color.</summary>
-    private static void ApplyMaterialDesignBaseTheme(AppTheme theme)
+    private static bool TryReplaceZenDictionary(Application app, AppTheme theme)
     {
-        var paletteHelper = new PaletteHelper();
-        var mdTheme = paletteHelper.GetTheme();
-        mdTheme.SetBaseTheme(theme == AppTheme.Light ? BaseTheme.Light : BaseTheme.Dark);
-        paletteHelper.SetTheme(mdTheme);
+        try
+        {
+            var uri = theme == AppTheme.Light ? LightThemeUri : DarkThemeUri;
+            var newDict = new ResourceDictionary { Source = uri };
+
+            var dictionaries = app.Resources.MergedDictionaries;
+            for (var i = 0; i < dictionaries.Count; i++)
+            {
+                if (dictionaries[i].Contains(ZenThemeMarkerKey))
+                {
+                    dictionaries[i] = newDict;
+                    return true;
+                }
+            }
+
+            dictionaries.Add(newDict);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ZenUpdate] ReplaceZenDictionary failed for '{theme}': {ex.Message}");
+            return false;
+        }
+    }
+
+    private static bool TryApplyMaterialDesignBaseTheme(AppTheme theme)
+    {
+        try
+        {
+            var paletteHelper = new PaletteHelper();
+            var mdTheme = paletteHelper.GetTheme();
+            mdTheme.SetBaseTheme(theme == AppTheme.Light ? BaseTheme.Light : BaseTheme.Dark);
+            paletteHelper.SetTheme(mdTheme);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[ZenUpdate] MaterialDesign base theme flip failed for '{theme}': {ex.Message}");
+            return false;
+        }
     }
 }
