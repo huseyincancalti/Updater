@@ -39,8 +39,24 @@ public partial class MainWindow : Window
     /// <summary>Minimizes the main window.</summary>
     private void MinimizeButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
-    /// <summary>Maximizes or restores the main window.</summary>
-    private void MaximizeButton_Click(object sender, RoutedEventArgs e)
+    /// <summary>
+    /// Maximizes or restores the main window.
+    /// Called by both the maximize button and <see cref="TitleBar_MouseLeftButtonDown"/> on double-click.
+    /// </summary>
+    private void MaximizeButton_Click(object sender, RoutedEventArgs e) => ToggleMaximize();
+
+    /// <summary>
+    /// Handles double-click on the transparent title-bar drag area to toggle maximize/restore.
+    /// WindowChrome takes care of single-click drag automatically; we only need this for double-click.
+    /// </summary>
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount == 2)
+            ToggleMaximize();
+    }
+
+    /// <summary>Switches between <see cref="WindowState.Maximized"/> and <see cref="WindowState.Normal"/>.</summary>
+    private void ToggleMaximize()
     {
         WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
     }

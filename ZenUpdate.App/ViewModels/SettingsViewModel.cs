@@ -25,7 +25,15 @@ public sealed partial class SettingsViewModel : ObservableObject
 
     /// <summary>The currently loaded application settings, bound to the Settings form.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsLightTheme))]
     private AppSettings _settings = new();
+
+    /// <summary>
+    /// True when the current theme is <see cref="AppTheme.Light"/>.
+    /// Used by DataTriggers in SettingsView so the toggle button always reflects
+    /// the correct next-action icon without needing enum-string comparisons.
+    /// </summary>
+    public bool IsLightTheme => Settings.Theme == AppTheme.Light;
 
     /// <summary>The package ID entered for a new blacklist entry.</summary>
     [ObservableProperty]
@@ -86,6 +94,9 @@ public sealed partial class SettingsViewModel : ObservableObject
 
             Settings = await _settingsRepo.LoadAsync();
             Settings.PropertyChanged += OnSettingsPropertyChanged;
+
+            // Ensure toggle icon reflects the loaded theme (covers cold-start with Light saved).
+            OnPropertyChanged(nameof(IsLightTheme));
 
             await ReloadBlacklistEntriesAsync();
             StatusMessage = "Settings loaded.";
@@ -256,9 +267,23 @@ public sealed partial class SettingsViewModel : ObservableObject
                 break;
 
             case nameof(AppSettings.Theme):
+                // Raise IsLightTheme so the toggle button icon updates immediately.
+                OnPropertyChanged(nameof(IsLightTheme));
                 ApplyThemeAndSave(Settings.Theme);
                 break;
         }
+    }
+
+    /// <summary>
+    /// Toggles the app theme between <see cref="AppTheme.Dark"/> and <see cref="AppTheme.Light"/>,
+    /// applies it immediately, and saves the choice so it persists across restarts.
+    /// Bound to the sun/moon toggle button in SettingsView.
+    /// </summary>
+    [RelayCommand]
+    public void ToggleTheme()
+    {
+        Settings.Theme = Settings.Theme == AppTheme.Dark ? AppTheme.Light : AppTheme.Dark;
+        // OnSettingsPropertyChanged listens to Settings.Theme and calls ApplyThemeAndSave.
     }
 
     /// <summary>

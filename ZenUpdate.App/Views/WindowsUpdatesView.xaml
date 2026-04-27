@@ -91,7 +91,11 @@
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       VirtualizingPanel.ScrollUnit="Pixel"
                       ScrollViewer.CanContentScroll="True"
-                      Background="{DynamicResource MaterialDesignPaper}"
+                      Background="{DynamicResource ZenDataGridSurfaceBrush}"
+                      Foreground="{DynamicResource ZenTextBrush}"
+                      ColumnHeaderStyle="{StaticResource ZenDataGridColumnHeaderStyle}"
+                      RowStyle="{StaticResource ZenDataGridRowStyle}"
+                      CellStyle="{StaticResource ZenDataGridCellStyle}"
                       PreviewMouseRightButtonDown="WindowsUpdatesDataGrid_OnPreviewMouseRightButtonDown"
                       materialDesign:DataGridAssist.CellPadding="8 6"
                       materialDesign:DataGridAssist.ColumnHeaderPadding="8 6">

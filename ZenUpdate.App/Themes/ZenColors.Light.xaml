@@ -11,12 +11,12 @@
           Success #10B981 · Error #E11D48 · Warning/Installing #D97706
     -->
 
-    <!-- ===== Core surfaces ===== -->
     <SolidColorBrush x:Key="ZenBackgroundBrush"      Color="#F8FAFC" />
     <SolidColorBrush x:Key="ZenDeepBackgroundBrush"  Color="#E0E7FF" />
     <SolidColorBrush x:Key="ZenSurfaceBrush"         Color="#FFFFFF" />
     <SolidColorBrush x:Key="ZenSidebarBrush"         Color="#E0E7FF" />
-    <SolidColorBrush x:Key="ZenSidebarHoverBrush"    Color="#D4DAFE" />
+    <!-- Hover: strong enough to be clearly visible against #E0E7FF sidebar -->
+    <SolidColorBrush x:Key="ZenSidebarHoverBrush"    Color="#A8B4FF" />
     <SolidColorBrush x:Key="ZenSidebarSelectedBrush" Color="#4F46E5" />
     <SolidColorBrush x:Key="ZenDividerBrush"         Color="#CBD5E1" />
 
@@ -34,13 +34,26 @@
     </LinearGradientBrush>
 
     <!-- Glass-lite: frosted white over the cool wash -->
-    <SolidColorBrush x:Key="ZenGlassPanelBrush" Color="#D9FFFFFF" />
-    <SolidColorBrush x:Key="ZenGlassBorderBrush" Color="#99CBD5E1" />
-    <SolidColorBrush x:Key="ZenDataGridChromeBackgroundBrush" Color="#66FFFFFF" />
+    <SolidColorBrush x:Key="ZenGlassPanelBrush"                    Color="#D9FFFFFF" />
+    <SolidColorBrush x:Key="ZenGlassBorderBrush"                   Color="#99CBD5E1" />
+    <!-- DataGrid chrome: opaque-enough white so row text stays crisp -->
+    <SolidColorBrush x:Key="ZenDataGridChromeBackgroundBrush"      Color="#CCFFFFFF" />
+    <SolidColorBrush x:Key="ZenDataGridChromeBorderBrush"          Color="#88A5B4C8" />
+    <!-- DataGrid body: very slightly tinted so the surface reads as glass, not plain white -->
+    <SolidColorBrush x:Key="ZenDataGridSurfaceBrush"               Color="#F4F6FF" />
+    <!-- DataGrid row hover: subtle indigo wash so hovered rows are clearly visible -->
+    <SolidColorBrush x:Key="ZenDataGridRowHoverBrush"              Color="#E8ECFF" />
+    <!-- DataGrid column header: slightly darker strip for visual separation -->
+    <SolidColorBrush x:Key="ZenDataGridHeaderBrush"                Color="#EDF0FF" />
+    <SolidColorBrush x:Key="ZenDataGridHeaderForegroundBrush"      Color="#475569" />
 
+    <!--
+        Selected nav item: deeper indigo with a subtle horizontal gradient
+        so it stands out from both the hover state and the sidebar background.
+    -->
     <LinearGradientBrush x:Key="ZenNavItemSelectedBackgroundBrush" StartPoint="0,0" EndPoint="1,0.5">
-        <GradientStop Color="#4F46E5" Offset="0" />
-        <GradientStop Color="#6366F1" Offset="1" />
+        <GradientStop Color="#4338CA" Offset="0" />
+        <GradientStop Color="#4F46E5" Offset="1" />
     </LinearGradientBrush>
 
     <!-- Log: flatter, less saturated than sidebar (matte console strip) -->

@@ -71,6 +71,13 @@
     </DataTemplate>
 
     <!-- ===== ComboBox ===== -->
+    <!--
+        ZenComboBoxToggleButtonTemplate
+        The toggle button IS the visible chrome of the closed ComboBox.
+        It renders the rounded border + chevron icon, and reacts to hover/open states.
+        The outer Border (templateRoot) carries Background/BorderBrush so the
+        themed colours show — this prevents the default Windows gray from leaking.
+    -->
     <ControlTemplate x:Key="ZenComboBoxToggleButtonTemplate" TargetType="ToggleButton">
         <Border x:Name="templateRoot"
                 Background="{TemplateBinding Background}"
@@ -78,80 +85,97 @@
                 BorderThickness="{TemplateBinding BorderThickness}"
                 CornerRadius="8"
                 SnapsToDevicePixels="true">
-            <Border x:Name="splitBorder"
-                    Width="30"
-                    HorizontalAlignment="Right"
-                    BorderBrush="Transparent"
-                    BorderThickness="0"
-                    Margin="0"
-                    SnapsToDevicePixels="true">
-                <materialDesign:PackIcon Kind="ChevronDown" 
-                                         Foreground="{TemplateBinding Foreground}" 
-                                         HorizontalAlignment="Center" 
-                                         VerticalAlignment="Center"
-                                         Width="18" Height="18"
-                                         Opacity="0.8"/>
-            </Border>
+            <!-- Chevron sits in the right 30 px; no extra border needed -->
+            <materialDesign:PackIcon x:Name="Chevron"
+                                     Kind="ChevronDown"
+                                     Foreground="{TemplateBinding Foreground}"
+                                     HorizontalAlignment="Right"
+                                     VerticalAlignment="Center"
+                                     Width="18" Height="18"
+                                     Margin="0,0,10,0"
+                                     Opacity="0.75" />
         </Border>
         <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="true">
-                <Setter Property="Background" TargetName="templateRoot" Value="{DynamicResource ZenSidebarHoverBrush}" />
-                <Setter Property="BorderBrush" TargetName="templateRoot" Value="{DynamicResource ZenPrimaryBrush}" />
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="templateRoot" Property="Background"   Value="{DynamicResource ZenSidebarHoverBrush}" />
+                <Setter TargetName="templateRoot" Property="BorderBrush"  Value="{DynamicResource ZenPrimaryBrush}" />
+                <Setter TargetName="Chevron"      Property="Opacity"      Value="1" />
             </Trigger>
-            <Trigger Property="IsChecked" Value="true">
-                <Setter Property="Background" TargetName="templateRoot" Value="{DynamicResource ZenSidebarHoverBrush}" />
-                <Setter Property="BorderBrush" TargetName="templateRoot" Value="{DynamicResource ZenPrimaryBrush}" />
+            <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="templateRoot" Property="Background"   Value="{DynamicResource ZenSidebarHoverBrush}" />
+                <Setter TargetName="templateRoot" Property="BorderBrush"  Value="{DynamicResource ZenPrimaryBrush}" />
+                <Setter TargetName="Chevron"      Property="Opacity"      Value="1" />
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
 
-    <Style TargetType="{x:Type ComboBox}">
-        <Setter Property="Foreground" Value="{DynamicResource ZenTextBrush}" />
-        <Setter Property="Background" Value="{DynamicResource ZenGlassPanelBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ZenGlassBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
+    <!--
+        ZenComboBoxStyle
+        Full-replacement ComboBox template so the default WPF chrome (gray
+        system-button look) never appears. All colours come from DynamicResource
+        so both Dark and Light themes work without changes.
+    -->
+    <Style x:Key="ZenComboBoxStyle" TargetType="{x:Type ComboBox}">
+        <!-- Themed surface background — eliminates the gray default -->
+        <Setter Property="Foreground"                              Value="{DynamicResource ZenTextBrush}" />
+        <Setter Property="Background"                              Value="{DynamicResource ZenSurfaceBrush}" />
+        <Setter Property="BorderBrush"                             Value="{DynamicResource ZenGlassBorderBrush}" />
+        <Setter Property="BorderThickness"                         Value="1" />
+        <!-- Kill the dotted focus rectangle — our border glow handles it -->
+        <Setter Property="FocusVisualStyle"                        Value="{x:Null}" />
         <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
-        <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
-        <Setter Property="Padding" Value="12,10" />
-        <Setter Property="MinHeight" Value="42" />
-        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="VerticalContentAlignment" Value="Center" />
-        <Setter Property="ScrollViewer.CanContentScroll" Value="true" />
-        <Setter Property="ScrollViewer.PanningMode" Value="Both" />
-        <Setter Property="Stylus.IsFlicksEnabled" Value="False" />
+        <Setter Property="ScrollViewer.VerticalScrollBarVisibility"   Value="Auto" />
+        <!-- Comfortable padding: text starts 14 px in, 10 px top/bottom -->
+        <Setter Property="Padding"                                 Value="14,10" />
+        <Setter Property="MinHeight"                               Value="40" />
+        <Setter Property="HorizontalContentAlignment"              Value="Left" />
+        <Setter Property="VerticalContentAlignment"                Value="Center" />
+        <Setter Property="ScrollViewer.CanContentScroll"           Value="True" />
+        <Setter Property="ScrollViewer.PanningMode"                Value="Both" />
+        <Setter Property="Stylus.IsFlicksEnabled"                  Value="False" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ComboBox}">
-                    <Grid x:Name="templateRoot" SnapsToDevicePixels="true">
+                    <Grid x:Name="templateRoot" SnapsToDevicePixels="True">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="30" />
+                            <ColumnDefinition Width="0" /><!-- collapsed; chevron is inside toggle button -->
                         </Grid.ColumnDefinitions>
+
+                        <!-- Drop-down popup -->
                         <Popup x:Name="PART_Popup"
                                Grid.ColumnSpan="2"
-                               AllowsTransparency="true"
+                               AllowsTransparency="True"
                                IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
                                Margin="1"
                                PopupAnimation="Fade"
                                Placement="Bottom">
-                            <!-- This is the popup background -->
                             <Border x:Name="dropDownBorder"
-                                    Background="{DynamicResource ZenSurfaceBrush}"
-                                    BorderBrush="{DynamicResource ZenGlassBorderBrush}"
+                                    Background="{DynamicResource ZenDeepBackgroundBrush}"
+                                    BorderBrush="{DynamicResource ZenPrimaryBrush}"
                                     BorderThickness="1"
                                     CornerRadius="8"
-                                    Margin="0,4,0,0"
+                                    Padding="0,4"
+                                    Margin="0,3,0,0"
                                     MinHeight="30"
                                     MaxHeight="{TemplateBinding MaxDropDownHeight}"
                                     MinWidth="{Binding ActualWidth, ElementName=templateRoot}">
                                 <ScrollViewer x:Name="DropDownScrollViewer">
-                                    <Grid x:Name="grid" RenderOptions.ClearTypeHint="Enabled">
-                                        <Canvas x:Name="canvas" HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Width="0" />
-                                        <ItemsPresenter x:Name="ItemsPresenter" KeyboardNavigation.DirectionalNavigation="Contained" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                    <Grid RenderOptions.ClearTypeHint="Enabled">
+                                        <Canvas HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Width="0" />
+                                        <ItemsPresenter x:Name="ItemsPresenter"
+                                                        KeyboardNavigation.DirectionalNavigation="Contained"
+                                                        SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
                                     </Grid>
                                 </ScrollViewer>
                             </Border>
                         </Popup>
+
+                        <!--
+                            ToggleButton spans the whole control (Grid.ColumnSpan="2").
+                            It owns the visible rounded border + chevron through
+                            ZenComboBoxToggleButtonTemplate — no default chrome remains.
+                        -->
                         <ToggleButton x:Name="toggleButton"
                                       Grid.ColumnSpan="2"
                                       Background="{TemplateBinding Background}"
@@ -159,11 +183,14 @@
                                       BorderThickness="{TemplateBinding BorderThickness}"
                                       Foreground="{TemplateBinding Foreground}"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
+                                      Focusable="False"
                                       Template="{StaticResource ZenComboBoxToggleButtonTemplate}" />
+
+                        <!-- Selected-item text sits on top of the toggle button -->
                         <ContentPresenter x:Name="contentPresenter"
                                           Grid.Column="0"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                          IsHitTestVisible="false"
+                                          IsHitTestVisible="False"
                                           Margin="{TemplateBinding Padding}"
                                           SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"
                                           VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
@@ -172,16 +199,25 @@
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                           ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" />
                     </Grid>
+                    <ControlTemplate.Triggers>
+                        <!-- Focused state: highlight border with accent colour -->
+                        <Trigger Property="IsFocused" Value="True">
+                            <Setter TargetName="toggleButton" Property="BorderBrush" Value="{DynamicResource ZenPrimaryBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+
+        <!-- ComboBoxItem style: hover + selected colours from active theme -->
         <Setter Property="ItemContainerStyle">
             <Setter.Value>
                 <Style TargetType="{x:Type ComboBoxItem}">
-                    <Setter Property="Padding" Value="14,10" />
-                    <Setter Property="Foreground" Value="{DynamicResource ZenTextBrush}" />
-                    <Setter Property="Background" Value="Transparent" />
-                    <Setter Property="BorderThickness" Value="0" />
+                    <Setter Property="Padding"          Value="14,9" />
+                    <Setter Property="Foreground"        Value="{DynamicResource ZenTextBrush}" />
+                    <Setter Property="Background"        Value="Transparent" />
+                    <Setter Property="BorderThickness"   Value="0" />
+                    <Setter Property="FocusVisualStyle"  Value="{x:Null}" />
                     <Setter Property="Template">
                         <Setter.Value>
                             <ControlTemplate TargetType="{x:Type ComboBoxItem}">
@@ -190,7 +226,8 @@
                                         Padding="{TemplateBinding Padding}"
                                         CornerRadius="6"
                                         Margin="4,2">
-                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                                    <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                      VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                                 </Border>
                                 <ControlTemplate.Triggers>
                                     <Trigger Property="IsMouseOver" Value="True">
@@ -200,6 +237,13 @@
                                         <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ZenPrimaryBrush}" />
                                         <Setter Property="Foreground" Value="White" />
                                     </Trigger>
+                                    <MultiTrigger>
+                                        <MultiTrigger.Conditions>
+                                            <Condition Property="IsSelected"   Value="True" />
+                                            <Condition Property="IsMouseOver"  Value="True" />
+                                        </MultiTrigger.Conditions>
+                                        <Setter TargetName="ItemBorder" Property="Background" Value="{DynamicResource ZenPrimaryBrush}" />
+                                    </MultiTrigger>
                                 </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Setter.Value>
@@ -218,6 +262,53 @@
     </Style>
 
     <!--
+        ===== DataGrid premium styles =====
+        Consumed via StaticResource in ProgramsView, WindowsUpdatesView, DriversView.
+        All colours come from DynamicResource so both Dark and Light themes work.
+    -->
+
+    <!-- Column header: tinted strip with muted foreground for subtle visual hierarchy -->
+    <Style x:Key="ZenDataGridColumnHeaderStyle" TargetType="DataGridColumnHeader"
+           BasedOn="{StaticResource MaterialDesignDataGridColumnHeader}">
+        <Setter Property="Background" Value="{DynamicResource ZenDataGridHeaderBrush}" />
+        <Setter Property="Foreground" Value="{DynamicResource ZenDataGridHeaderForegroundBrush}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FontSize"   Value="12" />
+        <Setter Property="Padding"    Value="8,8" />
+        <Setter Property="BorderThickness" Value="0" />
+    </Style>
+
+    <!-- Row: transparent → themed hover → accent selected -->
+    <Style x:Key="ZenDataGridRowStyle" TargetType="DataGridRow"
+           BasedOn="{StaticResource MaterialDesignDataGridRow}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Style.Triggers>
+            <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ZenDataGridRowHoverBrush}" />
+            </Trigger>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="{DynamicResource ZenPrimaryBrush}" />
+                <Setter Property="Foreground" Value="White" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!-- Cell: transparent so the row background shows through cleanly -->
+    <Style x:Key="ZenDataGridCellStyle" TargetType="DataGridCell"
+           BasedOn="{StaticResource MaterialDesignDataGridCell}">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+        <Style.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="Foreground" Value="White" />
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
+    <!--
         Glass-lite panels: semi-transparent fill + hairline border + rounded corners.
         No Blur effect — WPF blurs are expensive; this fakes glass with alpha only.
     -->
@@ -229,22 +320,95 @@
     </Style>
 
     <!--
-        DataGrid outer chrome: subtle frame around an opaque DataGrid. Keeps
-        row/cell backgrounds solid (readability) while the container feels lifted.
+        DataGrid outer chrome: premium glass frame around the table.
+        Two-layer approach:
+          1. Outer Border: rounded container with a subtle top-edge gradient tint (glass sheen)
+             and a stronger drop shadow for physical depth.
+          2. Inner DataGrid background (ZenDataGridSurfaceBrush): tinted/translucent surface
+             so the ambient theme colour bleeds through rows subtly.
+        ClipToBounds on the outer Border ensures the DataGrid is clipped to the rounded corners.
+        DropShadowEffect RenderingBias=Performance: no GPU memory trade-off.
     -->
     <Style x:Key="ZenDataGridChromeStyle" TargetType="Border">
-        <Setter Property="Background" Value="{DynamicResource ZenDataGridChromeBackgroundBrush}" />
-        <Setter Property="BorderBrush" Value="{DynamicResource ZenGlassBorderBrush}" />
-        <Setter Property="BorderThickness" Value="1" />
-        <Setter Property="CornerRadius" Value="10" />
-        <Setter Property="Padding" Value="0" />
+        <Setter Property="BorderBrush"      Value="{DynamicResource ZenDataGridChromeBorderBrush}" />
+        <Setter Property="BorderThickness"  Value="1" />
+        <Setter Property="CornerRadius"     Value="12" />
+        <Setter Property="Padding"          Value="0" />
+        <Setter Property="ClipToBounds"     Value="True" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Background">
+            <Setter.Value>
+                <!--
+                    Vertical gradient: top strip is slightly lighter (glass highlight),
+                    remainder matches the chrome background brush.
+                    This gives the container a 3D curved-surface feel without blur.
+                -->
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#44FFFFFF" Offset="0" />
+                    <GradientStop Color="#18FFFFFF" Offset="0.08" />
+                    <GradientStop Color="#00FFFFFF" Offset="1" />
+                </LinearGradientBrush>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="18"
+                                  ShadowDepth="3"
+                                  Direction="270"
+                                  Color="#000000"
+                                  Opacity="0.18"
+                                  RenderingBias="Performance" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- Settings / summary cards: restrained elevation + glass fill -->
     <Style x:Key="ZenGlassCardStyle" TargetType="materialDesign:Card">
         <Setter Property="Background" Value="{DynamicResource ZenGlassPanelBrush}" />
         <Setter Property="UniformCornerRadius" Value="14" />
+    </Style>
+
+    <!--
+        ZenThemeToggleStyle
+        A pill-shaped button used as the theme toggle on the Settings page.
+        The icon and label update via DataTrigger on Settings.Theme so the
+        current state is always visible at a glance.
+        Command = ToggleThemeCommand on SettingsViewModel.
+    -->
+    <Style x:Key="ZenThemeToggleStyle" TargetType="Button">
+        <Setter Property="Background"        Value="{DynamicResource ZenSurfaceBrush}" />
+        <Setter Property="BorderBrush"       Value="{DynamicResource ZenGlassBorderBrush}" />
+        <Setter Property="BorderThickness"   Value="1" />
+        <Setter Property="Foreground"        Value="{DynamicResource ZenTextBrush}" />
+        <Setter Property="Padding"           Value="16,8" />
+        <Setter Property="Cursor"            Value="Hand" />
+        <Setter Property="FocusVisualStyle"  Value="{x:Null}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="20"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background"  Value="{DynamicResource ZenSidebarHoverBrush}" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ZenPrimaryBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ZenPrimaryBrush}" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource ZenPrimaryBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

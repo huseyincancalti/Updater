@@ -7,13 +7,13 @@
         Title="ZenUpdate"
         Height="720" Width="1100"
         MinHeight="600" MinWidth="800"
-        WindowStyle="SingleBorderWindow"
+        WindowStyle="None"
         Background="{DynamicResource ZenAmbientBackgroundBrush}"
         TextElement.Foreground="{DynamicResource MaterialDesignBody}"
         TextElement.FontFamily="{DynamicResource MaterialDesignFont}">
 
     <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="40" 
+        <WindowChrome CaptionHeight="42" 
                       CornerRadius="0" 
                       GlassFrameThickness="0" 
                       ResizeBorderThickness="6" 
@@ -44,7 +44,7 @@
         <Style x:Key="WindowControlButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Foreground" Value="{DynamicResource ZenTextBrush}" />
             <Setter Property="Width" Value="46" />
             <Setter Property="Height" Value="40" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
@@ -99,8 +99,8 @@
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
             <Setter Property="materialDesign:ButtonAssist.CornerRadius" Value="8" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
-            <Setter Property="TextElement.Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Foreground" Value="{DynamicResource ZenTextBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource ZenTextBrush}" />
             <Setter Property="TextElement.FontSize" Value="13" />
             <Setter Property="TextElement.FontWeight" Value="SemiBold" />
             <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
@@ -123,7 +123,7 @@
         <Style x:Key="LogDrawerHeaderToggleStyle" TargetType="ToggleButton">
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{DynamicResource MaterialDesignBody}" />
+            <Setter Property="Foreground" Value="{DynamicResource ZenTextBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
             <Setter Property="Cursor" Value="Hand" />
@@ -166,7 +166,7 @@
     <Grid>
         <Grid.RowDefinitions>
             <!-- Title bar -->
-            <RowDefinition Height="40" />
+            <RowDefinition Height="42" />
             <!-- Main content area -->
             <RowDefinition Height="*" />
             <!-- Log drawer: Auto so the row only takes as much space as the drawer needs. -->
@@ -174,27 +174,51 @@
         </Grid.RowDefinitions>
 
         <!-- ===== Custom Title Bar ===== -->
-        <Grid Grid.Row="0" Background="{DynamicResource ZenDeepBackgroundBrush}">
+        <Grid Grid.Row="0" Background="{DynamicResource ZenDeepBackgroundBrush}"
+              TextElement.Foreground="{DynamicResource ZenTextBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <!-- Left: Icon & Title -->
+            <!-- Left: Icon & Title (IsHitTestVisible=False so WindowChrome drag works) -->
             <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
                 <materialDesign:PackIcon Kind="Update" Width="18" Height="18" Foreground="{DynamicResource ZenPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                 <TextBlock Text="ZenUpdate" FontWeight="SemiBold" FontSize="13" Foreground="{DynamicResource ZenTextBrush}" VerticalAlignment="Center" />
             </StackPanel>
+
+            <!--
+                Centre drag area: spans the middle column.
+                MouseLeftButtonDown on double-click triggers maximize/restore.
+                WindowChrome handles single-click-and-drag automatically.
+            -->
+            <Border Grid.Column="1"
+                    Background="Transparent"
+                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown" />
 
             <!-- Right: Window Controls -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" WindowChrome.IsHitTestVisibleInChrome="True">
                 <Button Style="{StaticResource WindowControlButtonStyle}" Click="MinimizeButton_Click" ToolTip="Minimize">
                     <materialDesign:PackIcon Kind="WindowMinimize" Width="14" Height="14" />
                 </Button>
-                <Button Style="{StaticResource WindowControlButtonStyle}" Click="MaximizeButton_Click" ToolTip="Maximize">
-                    <materialDesign:PackIcon Kind="WindowMaximize" Width="14" Height="14" />
+
+                <!-- Maximize/Restore button: icon swaps with window state -->
+                <Button Style="{StaticResource WindowControlButtonStyle}" Click="MaximizeButton_Click" ToolTip="Maximize / Restore">
+                    <materialDesign:PackIcon Width="14" Height="14">
+                        <materialDesign:PackIcon.Style>
+                            <Style TargetType="materialDesign:PackIcon">
+                                <Setter Property="Kind" Value="WindowMaximize" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding WindowState, RelativeSource={RelativeSource AncestorType=Window}}" Value="Maximized">
+                                        <Setter Property="Kind" Value="WindowRestore" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </materialDesign:PackIcon.Style>
+                    </materialDesign:PackIcon>
                 </Button>
+
                 <Button Style="{StaticResource WindowCloseButtonStyle}" Click="CloseButton_Click" ToolTip="Close">
                     <materialDesign:PackIcon Kind="WindowClose" Width="14" Height="14" />
                 </Button>
@@ -212,7 +236,7 @@
             <Border Grid.Column="0"
                     Background="{DynamicResource ZenSidebarPanelBrush}"
                     BorderThickness="0,0,1,0"
-                    BorderBrush="{DynamicResource MaterialDesignDivider}">
+                    BorderBrush="{DynamicResource ZenDividerBrush}">
                 <StackPanel>
 
                     <!-- App logo / title -->
@@ -222,7 +246,7 @@
                                Foreground="{DynamicResource ZenPrimaryBrush}"
                                Margin="20,24,20,20" />
 
-                    <Separator Margin="14,0,14,8" />
+                    <Separator Margin="14,0,14,10" Background="{DynamicResource ZenDividerBrush}" />
 
                     <!-- Navigation buttons -->
                     <!-- Navigation: Buttons support Command binding; ListBoxItem does not -->
@@ -378,7 +402,7 @@
         <Border Grid.Row="2"
                 Background="{DynamicResource ZenLogDrawerMatteBrush}"
                 BorderThickness="0,1,0,0"
-                BorderBrush="{DynamicResource MaterialDesignDivider}">
+                BorderBrush="{DynamicResource ZenDividerBrush}">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />

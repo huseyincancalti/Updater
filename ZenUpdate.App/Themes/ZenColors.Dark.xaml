@@ -42,9 +42,21 @@
     </LinearGradientBrush>
 
     <!-- Glass-lite panel fills (no blur — layered alpha over ambient bg) -->
-    <SolidColorBrush x:Key="ZenGlassPanelBrush" Color="#3A1E1B4B" />
-    <SolidColorBrush x:Key="ZenGlassBorderBrush" Color="#2EFFFFFF" />
-    <SolidColorBrush x:Key="ZenDataGridChromeBackgroundBrush" Color="#1AFFFFFF" />
+    <SolidColorBrush x:Key="ZenGlassPanelBrush"               Color="#3A1E1B4B" />
+    <SolidColorBrush x:Key="ZenGlassBorderBrush"              Color="#2EFFFFFF" />
+    <!-- DataGrid chrome: slightly more opaque than glass panels for readability -->
+    <SolidColorBrush x:Key="ZenDataGridChromeBackgroundBrush" Color="#221E1B4B" />
+    <SolidColorBrush x:Key="ZenDataGridChromeBorderBrush"     Color="#3DFFFFFF" />
+    <!--
+        DataGrid body: translucent indigo surface so the ambient gradient bleeds through
+        slightly. More opaque than the chrome container so rows stay readable.
+    -->
+    <SolidColorBrush x:Key="ZenDataGridSurfaceBrush"          Color="#E0111122" />
+    <!-- DataGrid row hover: subtle brightening so hovered rows are visible -->
+    <SolidColorBrush x:Key="ZenDataGridRowHoverBrush"        Color="#28FFFFFF" />
+    <!-- DataGrid column header: slightly lighter strip for visual separation -->
+    <SolidColorBrush x:Key="ZenDataGridHeaderBrush"          Color="#18161440" />
+    <SolidColorBrush x:Key="ZenDataGridHeaderForegroundBrush" Color="#94A3B8" />
 
     <!-- Premium nav: selected item — horizontal depth -->
     <LinearGradientBrush x:Key="ZenNavItemSelectedBackgroundBrush" StartPoint="0,0" EndPoint="1,0.5">
